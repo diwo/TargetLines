@@ -25,12 +25,12 @@ namespace TargetLines
 
         public TargetLine(GameObjectHelper obj) {
             ThisObject = obj;
-            if (ThisObject.Object.TargetObject != null) {
-                LastTargetId = ThisObject.Object.TargetObject.TargetObjectId;
-                LastTargetPosition = ThisObject.Object.TargetObject.Position;
+            if (ThisObject.TargetObject != null) {
+                LastTargetId = ThisObject.TargetObject.TargetObjectId;
+                LastTargetPosition = ThisObject.TargetObject.Position;
             }
             else {
-                LastTargetPosition = ThisObject.Object.Position;
+                LastTargetPosition = ThisObject.Position;
             }
         }
 
@@ -63,19 +63,19 @@ namespace TargetLines
             FFXIVClientStructs.FFXIV.Client.System.Framework.Framework* framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance(); ;
             ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
             GameObjectHelper target = null;
-            Vector3 mypos = ThisObject.Object.Position;
+            Vector3 mypos = ThisObject.Position;
             Vector3 tpos = new Vector3();
             Vector3 midpos = new Vector3();
             ABGR linecolor = new ABGR(0, 0, 0, 0);
             ABGR outlinecolor = new ABGR(0, 0, 0, 0);
-            float height = ThisObject.Object.HitboxRadius; // for midpoint
+            float height = ThisObject.HitboxRadius; // for midpoint
             float alpha = (1.0f - Globals.Config.saved.WaveAmplitudeOffset) + (float)Math.Cos(Globals.Runtime * Globals.Config.saved.WaveFrequencyScalar) * Globals.Config.saved.WaveAmplitudeOffset;
             bool usequad = false;
             bool easing = false;
-            bool has_target = ThisObject.Object.TargetObject != null;
+            bool has_target = ThisObject.TargetObject != null;
 
             if (has_target) {
-                if (ThisObject.Object.TargetObject.IsValid() == false ) {
+                if (ThisObject.TargetObject.IsValid() == false ) {
                     has_target = false;
                 }
             }
@@ -95,15 +95,15 @@ namespace TargetLines
                     alpha = 0.0f;
                 }
 
-                tpos = Vector3.Lerp(LastTargetPosition, ThisObject.Object.Position, 1.0f - alpha);
+                tpos = Vector3.Lerp(LastTargetPosition, ThisObject.Position, 1.0f - alpha);
                 easing = true;
                 DyingTime += framework->FrameDeltaTime;
                 LivingTime = 0.0f;
             }
             else if (has_target) {
-                target = new GameObjectHelper(ThisObject.Object.TargetObject);
+                target = new GameObjectHelper(ThisObject.TargetObject);
                 tpos = target.Object.Position;
-                if (ThisObject.Object.TargetObjectId != LastTargetId && had_target) {
+                if (ThisObject.TargetObjectId != LastTargetId && had_target) {
                     Switching = true;
                     LivingTime = 0.0f;
                 }
@@ -200,10 +200,13 @@ namespace TargetLines
             height *= MathUtils.Lerpf(0.0f, 1.0f, angle / deg90);
             midpos.Y += (height * Globals.Config.saved.ArcHeightScalar);
 
-            Vector3 start_to_camera = camera_pos - mypos;
-            Vector3 end_to_camera = camera_pos - tpos;
+            if (has_target && target.IsBattleChara() && !target.IsPlayerCharacter()) {
+                if (!target.IsVisible(true)){
+                    return;
+                }
+            }
 
-            if (Vector3.Dot(start_to_camera, forward) < 0 && Vector3.Dot(end_to_camera, forward) < 0) {
+            if (!ThisObject.IsVisible(true) && !Globals.IsVisible(tpos + new Vector3(0.0f, 0.5f, 0.0f), true)) {
                 return;
             }
 

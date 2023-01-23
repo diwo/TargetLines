@@ -82,6 +82,14 @@ namespace TargetLines
 
             Globals.Runtime += framework->FrameDeltaTime;
 
+            if (Globals.ClientState.LocalPlayer == null) {
+                if (TargetLineDict != null) {
+                    if (TargetLineDict.Count > 0) {
+                        TargetLineDict.Clear();
+                    }
+                }
+            }
+
             for (int index = 0; index < Service.ObjectTable.Length; index++) {
                 GameObject obj = Service.ObjectTable[index];
                 uint id;
@@ -92,9 +100,9 @@ namespace TargetLines
                         should_delete = true;
                     }
 
-                    // delete keys that are unused for a minute
+                    // delete keys that are unused for a bit
                     if (TargetLineDict.ContainsKey(id)) {
-                        if (TargetLineDict[id].DeadTime > 60.0f) {
+                        if (TargetLineDict[id].DeadTime > 20.0f) {
                             should_delete = true;
                         }
                     }

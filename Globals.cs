@@ -2,6 +2,7 @@
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Interface.Windowing;
+using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
 using System;
 using System.Numerics;
 
@@ -55,6 +56,36 @@ namespace TargetLines
 
 
             return Vector3.Normalize(WorldCamera_GetPos() - WorldCamera_GetLookAtPos());
+        }
+
+        public static unsafe bool IsVisible(FFXIVClientStructs.FFXIV.Common.Math.Vector3 position, bool occlusion) {
+            FFXIVClientStructs.FFXIV.Common.Math.Vector3 cam = WorldCamera_GetPos();
+            FFXIVClientStructs.FFXIV.Common.Math.Vector3 forward = WorldCamera_GetForward();
+            FFXIVClientStructs.FFXIV.Common.Math.Vector3 to_camera = cam - position;
+            FFXIVClientStructs.FFXIV.Client.System.Framework.Framework* framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
+
+            // behind camera
+            if (Vector3.Dot(to_camera, forward) < 0) {
+                return false;
+            }
+
+            if (occlusion) {
+                var direction = position - cam;
+                var length = direction.Magnitude;
+
+                if (length != 0) {
+                    var flags = stackalloc int[] { 0x4000, 0x4000 };
+                    var hit = stackalloc RaycastHit[1];
+                    direction = direction.Normalized;
+                    var result = framework->BGCollisionModule->RaycastEx(hit, cam, direction, length + 1.0f, 1, flags);
+                    return result == false;
+                }
+
+                return false;
+            }
+            else {
+                return true;
+            }
         }
     }
 }
