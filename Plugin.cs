@@ -141,7 +141,11 @@ namespace TargetLines
                         || !Globals.Config.saved.OnlyTargetingPC);
 
                     if (doDraw) {
-                        if (TargetLineDict[id].ThisObject.Object.IsValid() && TargetLineDict[id].ThisObject.IsTargetable()) {
+                        bool condition = TargetLineDict[id].ThisObject.Object.IsValid();
+#if (!PROBABLY_BAD)
+                        condition = condition && TargetLineDict[id].ThisObject.IsTargetable();
+#endif
+                        if (condition) {
                             TargetLineDict[id].Draw();
                         }
                     }

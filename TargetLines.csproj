@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<TargetFramework>net7.0</TargetFramework>
 		<LangVersion>9.0</LangVersion>
 		<Version>1.0.0.0</Version>
+		<Configurations>Debug;Release;Unlocked</Configurations>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -43,6 +43,12 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 	  <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
 	  <LangVersion>11.0</LangVersion>
+	</PropertyGroup>
+  
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unlocked|AnyCPU'">
+	  <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
+	  <LangVersion>11.0</LangVersion>
+	  <DefineConstants>PROBABLY_BAD</DefineConstants>
 	</PropertyGroup>
   
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

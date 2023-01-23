@@ -204,9 +204,11 @@ namespace TargetLines
             midpos.Y += (height * Globals.Config.saved.ArcHeightScalar);
 
             if (has_target && target.IsBattleChara() && !target.IsPlayerCharacter()) {
-                if (!target.IsVisible(true)){
-                    return;
-                }
+#if (PROBABLY_BAD)
+                if (!target.IsVisible(Globals.Config.saved.OcclusionCulling)) return;
+#else
+                if (!target.IsVisible(true)) return;
+#endif
             }
 
             if (!ThisObject.IsVisible(Globals.Config.saved.OcclusionCulling) && !Globals.IsVisible(tpos + new Vector3(0.0f, LastYOffset, 0.0f), Globals.Config.saved.OcclusionCulling)) {
