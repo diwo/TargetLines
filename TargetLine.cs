@@ -7,6 +7,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 
 namespace TargetLines
 {
@@ -22,6 +23,7 @@ namespace TargetLines
         public float DeadTime = 0.0f;
 
         private float LastHeight = 0.0f;
+        private float LastYOffset = 0.0f;
 
         public TargetLine(GameObjectHelper obj) {
             ThisObject = obj;
@@ -75,7 +77,7 @@ namespace TargetLines
             bool has_target = ThisObject.TargetObject != null;
 
             if (has_target) {
-                if (ThisObject.TargetObject.IsValid() == false ) {
+                if (ThisObject.TargetObject.IsValid() == false) {
                     has_target = false;
                 }
             }
@@ -120,6 +122,7 @@ namespace TargetLines
                 DyingTime = 0.0f;
                 DeadTime = 0.0f;
                 LastTargetId = target.Object.ObjectId;
+                LastYOffset = target.RealObject->Height + target.HitboxRadius;
             }
 
             had_target = has_target;
@@ -206,7 +209,7 @@ namespace TargetLines
                 }
             }
 
-            if (!ThisObject.IsVisible(true) && !Globals.IsVisible(tpos + new Vector3(0.0f, 0.5f, 0.0f), true)) {
+            if (!ThisObject.IsVisible(true) && !Globals.IsVisible(tpos + new Vector3(0.0f, LastYOffset, 0.0f), true)) {
                 return;
             }
 

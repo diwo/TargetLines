@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace TargetLines
 {
-    internal class GameObjectHelper {
+    internal unsafe class GameObjectHelper {
         public GameObject Object;
 
         public GameObjectHelper(GameObject obj) {
@@ -29,16 +29,21 @@ namespace TargetLines
 
         public bool IsVisible(bool occlusion) {
             Vector3 safePos = Position;
-            safePos.Y += HitboxRadius;
+            safePos.Y += RealObject->Height + HitboxRadius;
+
+            if (RealObject->Scale == 0.0f) {
+                return false;
+            }
 
             return Globals.IsVisible(safePos, occlusion);
         }
 
-        public bool IsTargetable() {
-            if (IsBattleChara()) {
-                //this.BattleChara.
-            }
-            return false;
+        public unsafe bool IsTargetable() {
+            return RealObject->GetIsTargetable();
+        }
+
+        public unsafe FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* RealObject {
+            get { return (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)Object.Address; }
         }
 
         public ObjectKind Kind {

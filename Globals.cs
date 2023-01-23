@@ -74,10 +74,10 @@ namespace TargetLines
                 var length = direction.Magnitude;
 
                 if (length != 0) {
-                    var flags = stackalloc int[] { 0x4000, 0x4000 };
+                    var flags = stackalloc int[] { 0x4000, 0x4000 }; // should probably figure out what these mean
                     var hit = stackalloc RaycastHit[1];
                     direction = direction.Normalized;
-                    var result = framework->BGCollisionModule->RaycastEx(hit, cam, direction, length + 1.0f, 1, flags);
+                    var result = framework->BGCollisionModule->RaycastEx(hit, cam, direction, length, 1, flags);
                     return result == false;
                 }
 

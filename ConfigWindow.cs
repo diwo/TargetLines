@@ -22,7 +22,9 @@ namespace TargetLines
             bool should_save = false;
 
             should_save |= ImGui.Checkbox("Only show target lines during combat", ref Globals.Config.saved.OnlyInCombat);
+            should_save |= ImGui.Checkbox("Only show target lines when unsheathed", ref Globals.Config.saved.OnlyUnsheathed);
             should_save |= ImGui.Checkbox("Only show target lines when target is you", ref Globals.Config.saved.OnlyTargetingPC);
+            should_save |= ImGui.Checkbox("Occlusion Culling (Always Enabled for enemies!)", ref Globals.Config.saved.OcclusionCulling);
             should_save |= ImGui.Checkbox("Use solid color instead of texture", ref Globals.Config.saved.SolidColor);
             if (Globals.Config.saved.SolidColor == false) {
                 should_save |= ImGui.Checkbox("Fade line as it approaches target", ref Globals.Config.saved.FadeToEnd);

@@ -137,7 +137,7 @@ namespace TargetLines
                     bool combat_flag = Service.Condition[ConditionFlag.InCombat];
                     bool doDraw = 
                         ((combat_flag && Globals.Config.saved.OnlyInCombat) || !Globals.Config.saved.OnlyInCombat)
-                        && ((Globals.Config.saved.OnlyTargetingPC && TargetLineDict[id].ThisObject.Object.TargetObjectId == Globals.ClientState.LocalPlayer.ObjectId)
+                        && ((Globals.Config.saved.OnlyTargetingPC && TargetLineDict[id].ThisObject.TargetObjectId == Globals.ClientState.LocalPlayer.ObjectId)
                         || !Globals.Config.saved.OnlyTargetingPC);
 
                     if (doDraw) {
@@ -151,8 +151,18 @@ namespace TargetLines
 
         private void OnDraw() {
             Globals.WindowSystem.Draw();
-            if (Globals.Config.saved.ToggledOff == false) {
-                ImGuiUtils.WrapBegin("##TargetLinesOverlay", OVERLAY_WINDOW_FLAGS, DrawOverlay);
+
+            if ((Globals.Config.saved.OnlyUnsheathed && (Globals.ClientState.LocalPlayer.StatusFlags & Dalamud.Game.ClientState.Objects.Enums.StatusFlags.WeaponOut) != 0) || !Globals.Config.saved.OnlyUnsheathed) {
+                if (Globals.Config.saved.ToggledOff == false) {
+                    ImGuiUtils.WrapBegin("##TargetLinesOverlay", OVERLAY_WINDOW_FLAGS, DrawOverlay);
+                }
+            }
+            else {
+                if (TargetLineDict != null) {
+                    if (TargetLineDict.Count > 0) {
+                        TargetLineDict.Clear();
+                    }
+                }
             }
         }
 

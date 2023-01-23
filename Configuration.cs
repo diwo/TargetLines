@@ -63,10 +63,12 @@ namespace TargetLines
         public ABGR OutlineColor = new ABGR(0x80, 0x00, 0x00, 0x00);
         public int TextureCurveSampleCount = 48;
         public bool OnlyInCombat = false;
+        public bool OnlyUnsheathed = false;
+        public bool OnlyTargetingPC = false;
         public bool SolidColor = false;
         public bool FadeToEnd = true;
-        public bool OnlyTargetingPC = false;
         public bool ToggledOff = false;
+        public bool OcclusionCulling = false;
     }
 
     public class Configuration : IPluginConfiguration {
