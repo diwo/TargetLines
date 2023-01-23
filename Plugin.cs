@@ -68,6 +68,20 @@ namespace TargetLines
             ToggleConfig();
         }
 
+        [Command("/ttl")]
+        [HelpMessage("Toggle target line overlay")]
+        private void On_ttl(string command, string args)
+        {
+            string str = "on";
+            Globals.Config.saved.ToggledOff = !Globals.Config.saved.ToggledOff;
+
+            if (Globals.Config.saved.ToggledOff) {
+                str = "off";
+            }
+
+            Globals.Chat.Print($"Target Lines overlay toggled {str}");
+        }
+
         private void ToggleConfig() {
             Globals.WindowSystem.GetWindow(ConfigWindow.ConfigWindowName).IsOpen = !Globals.WindowSystem.GetWindow(ConfigWindow.ConfigWindowName).IsOpen;
         }
@@ -137,7 +151,9 @@ namespace TargetLines
 
         private void OnDraw() {
             Globals.WindowSystem.Draw();
-            ImGuiUtils.WrapBegin("##TargetLinesOverlay", OVERLAY_WINDOW_FLAGS, DrawOverlay);
+            if (Globals.Config.saved.ToggledOff == false) {
+                ImGuiUtils.WrapBegin("##TargetLinesOverlay", OVERLAY_WINDOW_FLAGS, DrawOverlay);
+            }
         }
 
         #region IDisposable Support

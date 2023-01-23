@@ -66,6 +66,7 @@ namespace TargetLines
         public bool SolidColor = false;
         public bool FadeToEnd = true;
         public bool OnlyTargetingPC = false;
+        public bool ToggledOff = false;
     }
 
     public class Configuration : IPluginConfiguration {
