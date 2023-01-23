@@ -209,7 +209,11 @@ namespace TargetLines
                 }
             }
 
-            if (!ThisObject.IsVisible(true) && !Globals.IsVisible(tpos + new Vector3(0.0f, LastYOffset, 0.0f), true)) {
+            if (!ThisObject.IsTargetable()) {
+                return;
+            }
+
+            if (!ThisObject.IsVisible(Globals.Config.saved.OcclusionCulling) && !Globals.IsVisible(tpos + new Vector3(0.0f, LastYOffset, 0.0f), Globals.Config.saved.OcclusionCulling)) {
                 return;
             }
 
