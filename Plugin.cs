@@ -7,16 +7,12 @@ using System;
 using ImGuiNET;
 using Dalamud.Game.ClientState.Objects.Types;
 using System.Collections.Generic;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game;
-using Dalamud.Hooking;
 using Dalamud.Logging;
-using System.Numerics;
 using Dalamud.Game.ClientState.Conditions;
 using System.IO;
 using TargetLines.Attributes;
 
-[assembly: System.Reflection.AssemblyVersion("1.0.0.*")]
+[assembly: System.Reflection.AssemblyVersion("1.0.*")]
 
 namespace TargetLines
 {

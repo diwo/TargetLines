@@ -1,13 +1,6 @@
-﻿using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Logging;
-using ImGuiNET;
+﻿using ImGuiNET;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using FFXIVClientStructs.FFXIV.Client.Game.Object;
 
 namespace TargetLines
 {
