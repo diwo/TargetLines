@@ -136,6 +136,12 @@ namespace TargetLines
                         && ((Globals.Config.saved.OnlyTargetingPC && TargetLineDict[id].ThisObject.TargetObjectId == Globals.ClientState.LocalPlayer.ObjectId)
                         || !Globals.Config.saved.OnlyTargetingPC);
 
+#if (!PROBABLY_BAD)
+                    if (Globals.ClientState.IsPvP) {
+                        doDraw = false;
+                    }
+#endif
+
                     if (doDraw) {
                         bool condition = TargetLineDict[id].ThisObject.Object.IsValid();
 #if (!PROBABLY_BAD)
@@ -166,7 +172,7 @@ namespace TargetLines
             }
         }
 
-        #region IDisposable Support
+#region IDisposable Support
         protected virtual void Dispose(bool disposing) {
             if (!disposing) return;
 
@@ -186,6 +192,6 @@ namespace TargetLines
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        #endregion
+#endregion
     }
 }
