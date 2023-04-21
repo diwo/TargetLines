@@ -5,77 +5,84 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
-namespace TargetLines
-{
-    internal unsafe class GameObjectHelper {
-        public GameObject Object;
+namespace TargetLines;
 
-        public GameObjectHelper(GameObject obj) {
-            Object = obj;
+internal unsafe class GameObjectHelper {
+    public GameObject Object;
+
+    public GameObjectHelper(GameObject obj) {
+        Object = obj;
+    }
+
+    // position of the target icon in world space
+    public Vector3 GetTargetPosition() {
+        Vector3 pos = Position;
+        pos.Y += Marshal.PtrToStructure<float>(Object.Address + 0x124);
+        return pos;
+    }
+
+    public float GetHeight() {
+        return Marshal.PtrToStructure<float>(Object.Address + 0x124);
+    }
+
+    public bool IsBattleChara() {
+        return Object is BattleChara;
+    }
+
+    public bool IsPlayerCharacter() {
+        return Object.ObjectKind == ObjectKind.Player;
+    }
+
+    public bool IsVisible(bool occlusion) {
+        Vector3 safePos = Position;
+        safePos.Y += RealObject->Height + HitboxRadius;
+
+        if (RealObject->Scale == 0.0f) {
+            return false;
         }
 
-        public bool IsBattleChara() {
-            return Object is BattleChara;
-        }
+        return Globals.IsVisible(safePos, occlusion);
+    }
 
-        public bool IsPlayerCharacter() {
-            return Object.ObjectKind == ObjectKind.Player;
-        }
+    public unsafe bool IsTargetable() {
+        return RealObject->GetIsTargetable();
+    }
 
-        public bool IsVisible(bool occlusion) {
-            Vector3 safePos = Position;
-            safePos.Y += RealObject->Height + HitboxRadius;
+    public unsafe FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* RealObject {
+        get { return (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)Object.Address; }
+    }
 
-            if (RealObject->Scale == 0.0f) {
-                return false;
-            }
+    public ObjectKind Kind {
+        get { return Object.ObjectKind; }
+    }
 
-            return Globals.IsVisible(safePos, occlusion);
-        }
+    public Vector3 Position {
+        get { return Object.Position; }
+    }
 
-        public unsafe bool IsTargetable() {
-            return RealObject->GetIsTargetable();
-        }
+    public float Rotation {
+        get {  return Object.Rotation; }
+    }
 
-        public unsafe FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* RealObject {
-            get { return (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)Object.Address; }
-        }
+    public float HitboxRadius {
+        get { return Object.HitboxRadius; }
+    }
 
-        public ObjectKind Kind {
-            get { return Object.ObjectKind; }
-        }
+    public ulong TargetObjectId {
+        get { return Object.TargetObjectId; }
+    }
 
-        public Vector3 Position {
-            get { return Object.Position; }
-        }
+    public GameObject? TargetObject {
+        get { return Object.TargetObject; }
+    }
 
-        public float Rotation {
-            get {  return Object.Rotation; }
-        }
+    public BattleChara BattleChara {
+        get { return Object as BattleChara; }
+    }
 
-        public float HitboxRadius {
-            get { return Object.HitboxRadius; }
-        }
-
-        public ulong TargetObjectId {
-            get { return Object.TargetObjectId; }
-        }
-
-        public GameObject? TargetObject {
-            get { return Object.TargetObject; }
-        }
-
-        public BattleChara BattleChara {
-            get { return Object as BattleChara; }
-        }
-
-        public PlayerCharacter PlayerCharacter {
-            get { return Object as PlayerCharacter; }
-        }
+    public PlayerCharacter PlayerCharacter {
+        get { return Object as PlayerCharacter; }
     }
 }
