@@ -10,11 +10,11 @@ public static class ClassJobHelper {
     public enum TargetFlags : int {
         /* 0x0001 */ Any = (1 << 0),        // any entity
         /* 0x0002 */ Player = (1 << 1),     // any Player character
-        /* 0x0004 */ Self = (1 << 2),       // local player
-        /* 0x0008 */ Enemy = (1 << 3),      // any enemy
-        /* 0x0010 */ NPC = (1 << 4),        // any npc
-        /* 0x0020 */ Alliance = (1 << 5),   // any Alliance member (Excluding party)
-        /* 0x0040 */ Party = (1 << 6),      // any Party member
+        /* 0x0004 */ Enemy = (1 << 2),      // any enemy
+        /* 0x0008 */ NPC = (1 << 3),        // any npc
+        /* 0x0010 */ Alliance = (1 << 4),   // any Alliance member (Excluding party)
+        /* 0x0020 */ Party = (1 << 5),      // any Party member
+        /* 0x0040 */ Self = (1 << 6),       // local player
         /* 0x0080 */ DPS = (1 << 7),        // include DPS
         /* 0x0100 */ Healer = (1 << 8),     // include Healer
         /* 0x0200 */ Tank = (1 << 9),       // include Tank

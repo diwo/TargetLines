@@ -127,6 +127,7 @@ public class SavedConfig {
     public bool OcclusionCulling = false;
     public bool PulsingEffect = true;
     public bool BreathingEffect = true;
+    public bool CompactFlagDisplay = false;
     public LineColor LineColor = new LineColor(new ABGR(0xC0, 0x80, 0x80, 0x80), new ABGR(0x80, 0x00, 0x00, 0x00), true); // fallback color
 
     [Obsolete] public ABGR PlayerPlayerLineColor;
@@ -155,25 +156,25 @@ public class Configuration : IPluginConfiguration {
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Player),
                     new TargetSettings(TargetFlags.Player),
-                    new LineColor(new ABGR(0xC0, 0, 0xFF, 0))
+                    new LineColor(new ABGR(0xC0, 0x50, 0xAF, 0x4C)) // greenish
                 ),
                 // player -> enemy default
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Player),
                     new TargetSettings(TargetFlags.Enemy),
-                    new LineColor(new ABGR(0xC0, 0x20, 0x40, 0xFF))
+                    new LineColor(new ABGR(0xC0, 0x36, 0x43, 0xF4)) // reddish
                 ), 
                 // enemy -> player default
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Enemy),
                     new TargetSettings(TargetFlags.Player),
-                    new LineColor(new ABGR(0xC0, 0, 0, 0xFF), true, true)
+                    new LineColor(new ABGR(0xC0, 0x00, 0x00, 0xFF), true, true) // red
                 ),
                 // enemy -> enemy default
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Enemy),
                     new TargetSettings(TargetFlags.Enemy),
-                    new LineColor(new ABGR(0x80, 0, 0x80, 0x80), true, true)
+                    new LineColor(new ABGR(0xC0, 0xB0, 0x27, 0x9C), true, true) // purpleish
                 )
             };
     }

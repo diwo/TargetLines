@@ -37,11 +37,13 @@ internal class ConfigWindow : Window, IDisposable
     private bool DrawTargetFlagEditor(ref TargetFlags flags, string guard) {
         int flag_count = Enum.GetValues(typeof(TargetFlags)).Length;
         bool should_save = false;
+        float charsize = ImGui.CalcTextSize("F").X * 24;
 
         for (int index = 0; index < flag_count; index++) {
             TargetFlags current_flag = (TargetFlags)(1 << index);
             string label = AddSpacesToCamelCase(current_flag.ToString());
             int flags_dirty = (int)flags;
+            float start = ImGui.GetCursorPosX();
             if (ImGui.CheckboxFlags($"{label}##{guard}{index}", ref flags_dirty, (int)current_flag)) {
                 flags = (TargetFlags)flags_dirty;
                 should_save = true;
@@ -50,9 +52,59 @@ internal class ConfigWindow : Window, IDisposable
                 ImGui.SetTooltip(TargetFlagDescriptions[index]);
             }
 
-            if ((index + 1) % 4 != 0) {
-                ImGui.SameLine();
+            if (Globals.Config.saved.CompactFlagDisplay) {
+                if ((index + 1) % 4 != 0) {
+                    ImGui.SameLine();
+                }
             }
+            else {
+                int mod = (index + 1) % 2;
+                if (mod != 0) {
+                    ImGui.SameLine(start + charsize);
+                }
+            }
+        }
+
+        return should_save;
+    }
+
+    private bool DrawJobFlagEditor(ref UInt64 flags, string guard) {
+        bool should_save = false;
+        float charsize = ImGui.CalcTextSize("F").X * 24;
+        if (ImGui.TreeNode($"Jobs##Jobs{guard}")) {
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("If any of these values are enabled, only these specific jobs will be filtered if the entity is a player. Otherwise, these values are completely ignored");
+            }
+            for (int index = 0; index < (int)ClassJob.Count; index++) {
+                UInt64 flag = (1UL << index);
+                bool toggled = (flags & flag) != 0;
+                string label = $"{(ClassJob)index}##{guard}{index}";
+                float start = ImGui.GetCursorPosX();
+
+                if (ImGui.Checkbox(label, ref toggled)) {
+                    should_save = true;
+                    if (toggled) {
+                        flags |= flag;
+                    }
+                    else {
+                        flags &= ~flag;
+                    }
+                }
+
+                if (Globals.Config.saved.CompactFlagDisplay) {
+                    if ((index + 1) % 4 != 0) {
+                        ImGui.SameLine();
+                    }
+                }
+                else {
+                    int mod = (index + 1) % 2;
+                    if (mod != 0) {
+                        ImGui.SameLine(start + charsize);
+                    }
+                }
+            }
+            ImGui.NewLine();
+            ImGui.TreePop();
         }
 
         return should_save;
@@ -163,6 +215,11 @@ internal class ConfigWindow : Window, IDisposable
             ImGui.SetTooltip("This value represents the speed in which the breathing and pulsing effect will happen");
         }
 
+        should_save |= ImGui.Checkbox("Compact Flag Display", ref Globals.Config.saved.CompactFlagDisplay);
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("If enabled, 4 flag options will be displayed per line, as opposed to 2");
+        }
+
         Vector4 color = Globals.Config.saved.LineColor.Color.Color;
         Vector4 ocolor = Globals.Config.saved.LineColor.OutlineColor.Color;
 
@@ -215,24 +272,33 @@ internal class ConfigWindow : Window, IDisposable
 
             if (ImGui.TreeNode($"{string.Join('|', from)} -> {string.Join('|', to)}###LineColorsEntry{qndex}")) {
                 if (ImGui.TreeNode($"Source Filters##From{qndex}")) {
+                    if (ImGui.IsItemHovered()) {
+                        ImGui.SetTooltip("Conditions that the targeting entity must satisfy to use these settings");
+                    }
                     if (DrawTargetFlagEditor(ref settings.From.Flags, $"From{qndex}Flags")) {
                         should_save = true;
                     }
-                    ImGui.TreePop();
-                }
-                if (ImGui.IsItemHovered()) {
-                    ImGui.SetTooltip("Conditions that the targeting entity must satisfy to use these settings");
-                }
 
-                if (ImGui.TreeNode($"Target Filters##To{qndex}")) {
-                    if (DrawTargetFlagEditor(ref settings.To.Flags, $"To{qndex}Flags")) {
+                    if (DrawJobFlagEditor(ref settings.From.Jobs, $"From{qndex}Jobs")) {
                         should_save = true;
                     }
                     ImGui.TreePop();
                 }
-                if (ImGui.IsItemHovered()) {
-                    ImGui.SetTooltip("Conditions that the targeted entity must satisfy to use these settings");
+
+                if (ImGui.TreeNode($"Target Filters##To{qndex}")) {
+                    if (ImGui.IsItemHovered()) {
+                        ImGui.SetTooltip("Conditions that the targeted entity must satisfy to use these settings");
+                    }
+                    if (DrawTargetFlagEditor(ref settings.To.Flags, $"To{qndex}Flags")) {
+                        should_save = true;
+                    }
+
+                    if (DrawJobFlagEditor(ref settings.To.Jobs, $"To{qndex}Jobs")) {
+                        should_save = true;
+                    }
+                    ImGui.TreePop();
                 }
+                
 
                 if (ImGui.ColorEdit4($"Color##Color{qndex}", ref color)) {
                     settings.LineColor.Color.Color = color;

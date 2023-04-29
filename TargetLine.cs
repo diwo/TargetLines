@@ -411,7 +411,17 @@ internal class TargetLine
                 var value = settings.LineColor;
 
                 // entries further from 0 are more pedantic, so this should help use choose the most specific entry
-                int priority = priority = (int)Math.Log2((int)from.Flags) + (int)Math.Log2((int)to.Flags);
+                int priority = 0;
+                for (int index = 0; index < 16; index++) {
+                    int bit = 1 << index;
+                    if (((int)from.Flags & bit) != 0) {
+                        priority += (int)MathF.Pow(index, 2);
+                    }
+                    if (((int)to.Flags & bit) != 0) {
+                        priority += (int)MathF.Pow(index, 2);
+                    }
+                }
+
                 if (priority > highestPriority) {
                     bool should_copy = CompareTargetSettings(ref from, ref ThisObject.Settings);
                     if (should_copy) {

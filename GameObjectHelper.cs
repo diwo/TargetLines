@@ -1,6 +1,7 @@
 ﻿using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
@@ -34,7 +35,7 @@ internal unsafe class GameObjectHelper {
                 }
             }
 
-            if ((Settings.Flags & TargetFlags.Party) == 0) {
+            if ((gm->AllianceFlags & 1) != 0 && (Settings.Flags & TargetFlags.Party) != 0) {
                 foreach (PartyMember member in gm->AllianceMembersSpan) {
                     if (member.ObjectID == Object.ObjectId) {
                         Settings.Flags |= TargetFlags.Alliance;
