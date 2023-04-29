@@ -19,6 +19,7 @@ internal class Globals
     public static unsafe CameraManager* CameraManager;
     public static double Runtime = 0.0;
     public static ImGuiScene.TextureWrap LineTexture;
+    public static ImGuiScene.TextureWrap OutlineTexture;
     public static ImGuiScene.TextureWrap EdgeTexture;
 
     public static unsafe Vector3 WorldCamera_GetPos() {

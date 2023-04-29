@@ -12,7 +12,7 @@ using Dalamud.Game.ClientState.Conditions;
 using System.IO;
 using TargetLines.Attributes;
 
-[assembly: System.Reflection.AssemblyVersion("1.1.1")]
+[assembly: System.Reflection.AssemblyVersion("1.2.0")]
 
 namespace TargetLines;
 
@@ -53,8 +53,10 @@ public class Plugin : IDalamudPlugin {
         InitializeCamera();
 
         var texture_line_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLine.png");
+        var texture_outline_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLineOutline.png");
         var texture_edge_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetEdge.png");
         Globals.LineTexture = PluginInterface.UiBuilder.LoadImage(texture_line_path);
+        Globals.OutlineTexture = PluginInterface.UiBuilder.LoadImage(texture_outline_path);
         Globals.EdgeTexture = PluginInterface.UiBuilder.LoadImage(texture_edge_path);
     }
 
@@ -130,8 +132,7 @@ public class Plugin : IDalamudPlugin {
                     }
                 }
 
-                bool doDraw = !Globals.Config.saved.OnlyTargetingPC || (Globals.Config.saved.OnlyTargetingPC && TargetLineDict[id].ThisObject.TargetObjectId == Globals.ClientState.LocalPlayer.ObjectId);
-                doDraw = doDraw && TargetLineDict.ContainsKey(id);
+                bool doDraw = TargetLineDict.ContainsKey(id);
 
 #if (!PROBABLY_BAD)
                 if (Globals.ClientState.IsPvP) {
@@ -157,7 +158,15 @@ public class Plugin : IDalamudPlugin {
 
         bool combat_flag = Service.Condition[ConditionFlag.InCombat];
         bool runOverlay = !Globals.Config.saved.OnlyUnsheathed || (Globals.Config.saved.OnlyUnsheathed && (Globals.ClientState.LocalPlayer.StatusFlags & Dalamud.Game.ClientState.Objects.Enums.StatusFlags.WeaponOut) != 0);
-        runOverlay = runOverlay && (!Globals.Config.saved.OnlyInCombat || (combat_flag && Globals.Config.saved.OnlyInCombat));
+
+        if (runOverlay) {
+            if (Globals.Config.saved.OnlyInCombat == InCombatOption.InCombat && combat_flag == false) {
+                runOverlay = false;
+            }
+            if (Globals.Config.saved.OnlyInCombat == InCombatOption.NotInCombat && combat_flag == true) {
+                runOverlay = false;
+            }
+        }
 
         if (runOverlay) {
             if (Globals.Config.saved.ToggledOff == false) {
