@@ -482,10 +482,10 @@ internal class TargetLine
             if (DrawEndCap == false) {
                 vis1 = false;
             }
-        }
 
-        if (!(vis0 && vis0)) {
-            return false;
+            if (!(vis0 && vis0)) {
+                return false;
+            }
         }
 
         return true;
