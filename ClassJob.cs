@@ -176,7 +176,7 @@ public static class ClassJobHelper {
         }
 
         // check if any other flags are true
-        for (int index = 1; index < 15; index++) {
+        for (int index = 1; index < 16; index++) {
             bool gbit = ((int)gflags & (1 << index)) != 0;
             bool ebit = ((int)eflags & (1 << index)) != 0;
 
