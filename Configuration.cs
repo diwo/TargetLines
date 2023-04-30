@@ -162,7 +162,7 @@ public class Configuration : IPluginConfiguration {
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Player),
                     new TargetSettings(TargetFlags.Enemy),
-                    new LineColor(new ABGR(0xC0, 0x36, 0x43, 0xF4)) // reddish
+                    new LineColor(new ABGR(0x80, 0x36, 0x43, 0xF4)) // reddish
                 ), 
                 // enemy -> player default
                 new TargetSettingsPair(
