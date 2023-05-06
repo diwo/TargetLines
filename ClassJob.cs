@@ -29,11 +29,11 @@ public static class ClassJobHelper {
     public static string[] TargetFlagDescriptions = {
         "Unconditionally draw this line",
         "Draw this line when a player is the target",
-        "Draw this line when you are the target",
         "Draw this line when an enemy is the target",
         "Draw this line when an NPC is the target",
         "Draw this line when an alliance member is the target",
         "Draw this line when a party member is the target",
+        "Draw this line when you are the target",
         "Draw this line when a player with a DPS role is the target",
         "Draw this line when a player with a Healer role is the target",
         "Draw this line when a player with a Tank role is the target",

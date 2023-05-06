@@ -4,6 +4,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
@@ -98,11 +99,33 @@ public class TargetSettingsPair {
     public TargetSettings From;
     public TargetSettings To;
     public LineColor LineColor;
+    public int Priority = -1;
+    public Guid UniqueId = Guid.Empty;
 
     public TargetSettingsPair(TargetSettings from, TargetSettings to, LineColor lineColor) {
         From = from;
         To = to;
         LineColor = lineColor;
+        Priority = -1;
+        UniqueId = Guid.NewGuid();
+    }
+
+    public int GetPairPriority() {
+        int priority = Priority;
+
+        if (priority == -1) {
+            for (int index = 0; index < 16; index++) {
+                int bit = 1 << index;
+                if (((int)From.Flags & bit) != 0) {
+                    priority += index;
+                }
+                if (((int)To.Flags & bit) != 0) {
+                    priority += index;
+                }
+            }
+        }
+
+        return priority;
     }
 }
 
@@ -149,6 +172,10 @@ public class Configuration : IPluginConfiguration {
 
 
     private DalamudPluginInterface PluginInterface;
+
+    public void SortLineColors() {
+        Globals.Config.LineColors = Globals.Config.LineColors.OrderByDescending(obj => obj.GetPairPriority()).ToList();
+    }
 
     public void InitializeDefaultLineColorsConfig() {
         LineColors = new List<TargetSettingsPair>() {
@@ -238,6 +265,12 @@ public class Configuration : IPluginConfiguration {
         // Initialize values if we didn't upgrade from an old config
         if (LineColorsWasNull == 1) {
             InitializeDefaultLineColorsConfig();
+        }
+
+        for (int index = 0; index < LineColors.Count; index++) {
+            if (LineColors[index].UniqueId == null || LineColors[index].UniqueId == Guid.Empty) {
+                LineColors[index].UniqueId = Guid.NewGuid();
+            }
         }
     }
 

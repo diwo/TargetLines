@@ -87,7 +87,7 @@ internal class TargetLine
         return point;
     }
 
-    public void DrawSolidLine() {
+    private void DrawSolidLine() {
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
 
         if (UseQuad) {
@@ -108,7 +108,7 @@ internal class TargetLine
         }
     }
 
-    public void DrawFancyLine() {
+    private void DrawFancyLine() {
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
         Vector2[] points = new Vector2[Globals.Config.saved.TextureCurveSampleCount];
         Vector2 uv1;
@@ -411,17 +411,7 @@ internal class TargetLine
                 var value = settings.LineColor;
 
                 // entries further from 0 are more pedantic, so this should help use choose the most specific entry
-                int priority = 0;
-                for (int index = 0; index < 16; index++) {
-                    int bit = 1 << index;
-                    if (((int)from.Flags & bit) != 0) {
-                        priority += (int)MathF.Pow(index, 2);
-                    }
-                    if (((int)to.Flags & bit) != 0) {
-                        priority += (int)MathF.Pow(index, 2);
-                    }
-                }
-
+                int priority = settings.GetPairPriority();
                 if (priority > highestPriority) {
                     bool should_copy = CompareTargetSettings(ref from, ref ThisObject.Settings);
                     if (should_copy) {

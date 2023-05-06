@@ -3,6 +3,7 @@ using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Numerics;
 using System.Text;
 using static TargetLines.ClassJobHelper;
@@ -246,6 +247,7 @@ internal class ConfigWindow : Window, IDisposable
         ImGui.Text("Filter & Color settings");
         if (ImGui.Button("New")) {
             Globals.Config.LineColors.Add(new TargetSettingsPair(new TargetSettings(), new TargetSettings(), new LineColor()));
+            Globals.Config.SortLineColors();
             should_save = true;
         }
 
@@ -253,6 +255,7 @@ internal class ConfigWindow : Window, IDisposable
 
         for (int qndex = 0; qndex < Globals.Config.LineColors.Count; qndex++) {
             var settings = Globals.Config.LineColors[qndex];
+            var guid = settings.UniqueId.ToString();
             int flag_count = Enum.GetValues(typeof(TargetFlags)).Length;
             List<string> from = new List<string>();
             List<string> to = new List<string>();
@@ -270,62 +273,73 @@ internal class ConfigWindow : Window, IDisposable
                 }
             }
 
-            if (ImGui.TreeNode($"{string.Join('|', from)} -> {string.Join('|', to)}###LineColorsEntry{qndex}")) {
-                if (ImGui.TreeNode($"Source Filters##From{qndex}")) {
-                    if (ImGui.IsItemHovered()) {
-                        ImGui.SetTooltip("Conditions that the targeting entity must satisfy to use these settings");
-                    }
-                    if (DrawTargetFlagEditor(ref settings.From.Flags, $"From{qndex}Flags")) {
+            int priority = settings.GetPairPriority();
+            if (ImGui.TreeNode($"{string.Join('|', from)} -> {string.Join('|', to)} ({priority})###LineColorsEntry{guid}")) {
+                if (ImGui.TreeNode($"Source Filters###From{guid}")) {
+                    if (DrawTargetFlagEditor(ref settings.From.Flags, $"From{guid}Flags")) {
                         should_save = true;
                     }
 
-                    if (DrawJobFlagEditor(ref settings.From.Jobs, $"From{qndex}Jobs")) {
-                        should_save = true;
-                    }
-                    ImGui.TreePop();
-                }
-
-                if (ImGui.TreeNode($"Target Filters##To{qndex}")) {
-                    if (ImGui.IsItemHovered()) {
-                        ImGui.SetTooltip("Conditions that the targeted entity must satisfy to use these settings");
-                    }
-                    if (DrawTargetFlagEditor(ref settings.To.Flags, $"To{qndex}Flags")) {
-                        should_save = true;
-                    }
-
-                    if (DrawJobFlagEditor(ref settings.To.Jobs, $"To{qndex}Jobs")) {
+                    if (DrawJobFlagEditor(ref settings.From.Jobs, $"From{guid}Jobs")) {
                         should_save = true;
                     }
                     ImGui.TreePop();
                 }
-                
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Conditions that the targeting entity must satisfy to use these settings");
+                }
 
-                if (ImGui.ColorEdit4($"Color##Color{qndex}", ref color)) {
+                if (ImGui.TreeNode($"Target Filters###To{guid}")) {
+                    if (DrawTargetFlagEditor(ref settings.To.Flags, $"To{guid}Flags")) {
+                        should_save = true;
+                    }
+
+                    if (DrawJobFlagEditor(ref settings.To.Jobs, $"To{guid}Jobs")) {
+                        should_save = true;
+                    }
+                    ImGui.TreePop();
+                }
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Conditions that the targeted entity must satisfy to use these settings");
+                }
+
+
+                if (ImGui.ColorEdit4($"Color###Color{guid}", ref color)) {
                     settings.LineColor.Color.Color = color;
                     should_save = true;
                 }
 
-                if (ImGui.ColorEdit4($"Outline Color##OColor{qndex}", ref ocolor)) {
+                if (ImGui.ColorEdit4($"Outline Color###OColor{guid}", ref ocolor)) {
                     settings.LineColor.OutlineColor.Color = ocolor;
                     should_save = true;
                 }
 
-                if (ImGui.Checkbox($"Use Quadratic Line##UseQuad{qndex}", ref settings.LineColor.UseQuad)) {
+                if (ImGui.Checkbox($"Use Quadratic Line###UseQuad{guid}", ref settings.LineColor.UseQuad)) {
                     should_save = true;
                 }
                 if (ImGui.IsItemHovered()) {
                     ImGui.SetTooltip("If enabled, this line will use a quadratic formula (as opposed to the default cubic formula). Useful if you would like different lines to have slightly different shapes. Quadratic lines look more like a half circle");
                 }
 
-                if (ImGui.Checkbox($"Visible##Visible{qndex}", ref settings.LineColor.Visible)) {
+                if (ImGui.Checkbox($"Visible###Visible{guid}", ref settings.LineColor.Visible)) {
                     should_save = true;
                 }
                 if (ImGui.IsItemHovered()) {
                     ImGui.SetTooltip("If disabled, this line will not render");
                 }
 
-                if (ImGui.Button($"Delete##DeleteEntry{qndex}")) {
+                if (ImGui.InputInt($"Priority###Priority{guid}", ref settings.Priority, 1, 1, ImGuiInputTextFlags.EnterReturnsTrue)) {
+                    Globals.Config.SortLineColors();
+                    should_save = true;
+                    break;
+                }
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("A higher priority is considered to be more important. Setting this to -1 makes the plugin calculate it.");
+                }
+
+                if (ImGui.Button($"Delete###DeleteEntry{guid}")) {
                     Globals.Config.LineColors.RemoveAt(qndex);
+                    Globals.Config.SortLineColors();
                     should_save = true;
                     ImGui.TreePop();
                     break;
@@ -333,9 +347,17 @@ internal class ConfigWindow : Window, IDisposable
 
                 ImGui.TreePop();
             }
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("source(s) -> target(s) (priority)");
+            }
 
             ImGui.Separator();
         }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+
+
 
         if (ImGui.Button("Reset To Default")) {
             Globals.Config.saved = new SavedConfig();
