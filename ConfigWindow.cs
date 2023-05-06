@@ -196,6 +196,20 @@ internal class ConfigWindow : Window, IDisposable
             ImGui.SetTooltip("When there is no longer a target, this represents the time (in seconds) the line will spend fading out");
         }
 
+        selected = (int)Globals.Config.saved.DeathAnimation;
+        if (ImGui.ListBox("No Target Animation", ref selected, Enum.GetNames(typeof(LineDeathAnimation)), (int)LineDeathAnimation.Count)) {
+            Globals.Config.saved.DeathAnimation = (LineDeathAnimation)selected;
+            should_save = true;
+        }
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("The formula to use for flattening the line when there is no longer a target");
+        }
+
+        should_save |= ImGui.SliderFloat("No Target Animation Time Scale", ref Globals.Config.saved.DeathAnimationTimeScale, 1.0f, 4.0f);
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("A scalar for how quickly the line flattens when there is no target. 1 means the line will be flat at the end of the animation");
+        }
+
         should_save |= ImGui.SliderFloat("Player Arc Height Bump", ref Globals.Config.saved.PlayerHeightBump, 0.0f, 10.0f);
         if (ImGui.IsItemHovered()) {
             ImGui.SetTooltip("If the source of the line is a player, it's starting point will be moved up by this amount");

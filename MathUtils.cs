@@ -7,4 +7,14 @@ public static class MathUtils {
     public static float Lerpf(float lhs, float rhs, float t) {
         return (1 - t) * lhs + t * rhs;
     }
+
+    public static float QuadraticLerpf(float lhs, float rhs, float t) {
+        return lhs + (rhs - lhs) * t * t;
+    }
+
+    public static float CubicLerpf(float lhs, float rhs, float t) {
+        float t3 = t * t * t;
+        float one_minus_t3 = (1 - t) * (1 - t) * (1 - t);
+        return lhs * one_minus_t3 + rhs * t3;
+    }
 }

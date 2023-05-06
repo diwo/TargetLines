@@ -16,6 +16,13 @@ public enum InCombatOption {
     Count
 }
 
+public enum LineDeathAnimation {
+    Linear,
+    Square,
+    Cube,
+    Count
+};
+
 public class TargetSettings {
     public TargetFlags Flags = 0;
     public UInt64 Jobs = 0; // bitfield from ClassJob
@@ -152,6 +159,8 @@ public class SavedConfig {
     public bool BreathingEffect = true;
     public bool CompactFlagDisplay = false;
     public LineColor LineColor = new LineColor(new ABGR(0xC0, 0x80, 0x80, 0x80), new ABGR(0x80, 0x00, 0x00, 0x00), true); // fallback color
+    public LineDeathAnimation DeathAnimation = LineDeathAnimation.Linear;
+    public float DeathAnimationTimeScale = 1.0f;
 
     [Obsolete] public ABGR PlayerPlayerLineColor;
     [Obsolete] public ABGR PlayerEnemyLineColor;

@@ -32,6 +32,7 @@ internal class TargetLine
     private ABGR OutlineColor = new ABGR(0, 0, 0, 0);
 
     private Vector3 LastTargetPosition = new Vector3();
+    private Vector3 LastTargetPosition2 = new Vector3();
     private ABGR LastLineColor = new ABGR(0, 0, 0, 0);
     private ABGR LastOutlineColor = new ABGR(0, 0, 0, 0);
     
@@ -56,9 +57,11 @@ internal class TargetLine
         if (ThisObject.TargetObject != null) {
             LastTargetId = ThisObject.TargetObject.TargetObjectId;
             LastTargetPosition = ThisObject.TargetObject.Position;
+            LastTargetPosition2 = LastTargetPosition;
         }
         else {
             LastTargetPosition = ThisObject.Position;
+            LastTargetPosition2 = LastTargetPosition;
         }
     }
 
@@ -253,14 +256,18 @@ internal class TargetLine
     private void UpdateStateNewTarget() {
         Vector3 start = ThisObject.Position;
         Vector3 end = ThisObject.Target.Position;
-        float start_height = ThisObject.GetHeight() * Globals.Config.saved.HeightScale;
-        float end_height = ThisObject.Target.GetHeight() * Globals.Config.saved.HeightScale;
+        float start_height = ThisObject.GetHeight();
+        float end_height = ThisObject.Target.GetHeight();
+        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
+        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
+        float mid_height = (start_height + end_height) * 0.5f;
         float alpha = StateTime / Globals.Config.saved.NewTargetEaseTime;
 
         LastTargetHeight = end_height;
-        MidHeight = (start_height +  end_height) * 0.5f;
-        start.Y += start_height;
-        end.Y += end_height;
+        MidHeight = mid_height;
+
+        start.Y += start_height_scaled;
+        end.Y += end_height_scaled;
         
         if (alpha < 0) {
             alpha = 0;
@@ -274,16 +281,43 @@ internal class TargetLine
 
         Position = start;
         TargetPosition = Vector3.Lerp(start, end, alpha);
+        LastTargetPosition2 = Vector3.Lerp(ThisObject.Position, ThisObject.Target.Position, alpha);
+    }
+
+    private void UpdateStateDying_Anim(float mid_height) {
+        float alpha = (StateTime / Globals.Config.saved.NoTargetFadeTime) * Globals.Config.saved.DeathAnimationTimeScale;
+
+        if (alpha > 1.0f) {
+            alpha = 1.0f;
+        }
+
+        switch (Globals.Config.saved.DeathAnimation) {
+            case (LineDeathAnimation.Linear):
+                MidHeight = MathUtils.Lerpf(mid_height, 0, alpha);
+                break;
+            case (LineDeathAnimation.Square):
+                MidHeight = MathUtils.QuadraticLerpf(mid_height, 0, alpha);
+                break;
+            case (LineDeathAnimation.Cube):
+                MidHeight = MathUtils.CubicLerpf(mid_height, 0, alpha);
+                break;
+        }
     }
 
     private void UpdateStateDying() {
         Vector3 start = ThisObject.Position;
         Vector3 end = LastTargetPosition;
-        float start_height = ThisObject.GetHeight() * Globals.Config.saved.HeightScale;
+        float start_height = ThisObject.GetHeight();
+        float end_height = LastTargetHeight;
+        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
+        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
+        float mid_height = (start_height + end_height) * 0.5f;
         float alpha = StateTime / Globals.Config.saved.NoTargetFadeTime;
 
-        MidHeight = (start_height + LastTargetHeight) * 0.5f;
-        start.Y += start_height;
+        UpdateStateDying_Anim(mid_height);
+
+        start.Y += start_height_scaled;
+        end.Y += end_height_scaled;
 
         if (alpha < 0) {
             alpha = 0;
@@ -296,17 +330,21 @@ internal class TargetLine
 
         Position = start;
         TargetPosition = Vector3.Lerp(end, start, alpha);
+        LastTargetPosition2 = Vector3.Lerp(ThisObject.Position, LastTargetPosition, alpha);
     }
 
     private void UpdateStateSwitching() {
         Vector3 start = LastTargetPosition;
         Vector3 end = ThisObject.Target.Position;
-        float my_height = ThisObject.GetHeight() * Globals.Config.saved.HeightScale;
-        float end_height = ThisObject.Target.GetHeight() * Globals.Config.saved.HeightScale;
+        float start_height = ThisObject.GetHeight();
+        float end_height = ThisObject.Target.GetHeight();
+        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
+        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
+        float mid_height = (start_height + end_height) * 0.5f;
         float alpha = StateTime / Globals.Config.saved.NewTargetEaseTime;
 
-        LastTargetHeight = end_height;
-        end.Y += end_height;
+        start.Y += LastTargetHeight * Globals.Config.saved.HeightScale;
+        end.Y += end_height_scaled;
 
         if (alpha < 0) {
             alpha = 0;
@@ -319,30 +357,37 @@ internal class TargetLine
         }
 
         Position = ThisObject.Position;
-        Position.Y += my_height;
+        Position.Y += start_height_scaled;
+
         TargetPosition = Vector3.Lerp(start, end, alpha);
-        MidHeight = MathUtils.Lerpf(LastMidHeight, (my_height + end_height) * 0.5f, alpha);
+        LastTargetPosition2 = Vector3.Lerp(LastTargetPosition, ThisObject.Target.Position, alpha);
+        MidHeight = MathUtils.Lerpf(LastMidHeight, mid_height, alpha);
     }
 
     private void UpdateStateIdle() {
-        float start_height = ThisObject.GetHeight() * Globals.Config.saved.HeightScale;
-        float end_height = ThisObject.Target.GetHeight() * Globals.Config.saved.HeightScale;
+        float start_height = ThisObject.GetHeight();
+        float end_height = ThisObject.Target.GetHeight();
+        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
+        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
+        float mid_height = (start_height + end_height) * 0.5f;
 
-        MidHeight = (start_height + end_height) * 0.5f;
+        LastTargetHeight = end_height;
+        MidHeight = mid_height;
 
         Position = ThisObject.Position;
+
         TargetPosition = ThisObject.Target.Position;
-
-        Position.Y += start_height;
-        TargetPosition.Y += end_height;
-
         LastTargetPosition = TargetPosition;
-        LastTargetHeight = end_height;
+        LastTargetPosition2 = LastTargetPosition;
+
+        Position.Y += start_height_scaled;
+        TargetPosition.Y += end_height_scaled;
     }
 
     private unsafe void UpdateState() {
         GameObjectHelper target = ThisObject.Target;
         bool has_target = target != null;
+        bool new_target = false;
 
         if (Framework == null) {
             Framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
@@ -350,18 +395,35 @@ internal class TargetLine
 
         if (has_target != HadTarget) {
             if (has_target) {
+                if (State == LineState.Dying) {
+                    LastTargetPosition = LastTargetPosition2;
+                }
+
                 LastTargetId = target.ObjectId;
                 State = LineState.NewTarget;
                 StateTime = 0;
             }
             else {
+                if (State == LineState.Switching || State == LineState.NewTarget) {
+                    LastTargetPosition = LastTargetPosition2;
+                }
+
                 State = LineState.Dying;
                 StateTime = 0;
             }
         }
 
-        if (has_target) {
-            if (target.ObjectId != LastTargetId && State != LineState.Switching) {
+        if (has_target && HadTarget) {
+            if (target.ObjectId != LastTargetId) {
+                LastTargetId = target.ObjectId;
+                new_target = true;
+            }
+
+            if (new_target) {
+                if (State == LineState.Switching) {
+                    LastTargetPosition = LastTargetPosition2;
+                }
+
                 State = LineState.Switching;
                 LastMidHeight = MidHeight;
                 StateTime = 0;
