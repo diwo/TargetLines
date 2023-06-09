@@ -505,6 +505,7 @@ internal class TargetLine
         GameObjectHelper target = ThisObject.Target;
         bool vis0 = ThisObject.IsVisible(Globals.Config.saved.OcclusionCulling);
         bool vis1 = false;
+        bool vis2 = false;
         if (target != null && target.IsBattleChara() && !target.IsPlayerCharacter()) {
 #if (PROBABLY_BAD)
             // for debug
@@ -524,7 +525,11 @@ internal class TargetLine
 
         DrawBeginCap = Service.Gui.WorldToScreen(Position, out ScreenPos);
         DrawEndCap = Service.Gui.WorldToScreen(TargetPosition, out TargetScreenPos);
-        Service.Gui.WorldToScreen(MidPosition, out MidScreenPos);
+        vis2 = Service.Gui.WorldToScreen(MidPosition, out MidScreenPos);
+
+        if ((DrawBeginCap | DrawEndCap | vis2) == false) {
+            return false;
+        }
 
         if (Globals.Config.saved.OcclusionCulling) {
             if (DrawBeginCap == false) {
