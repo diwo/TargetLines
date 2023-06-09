@@ -12,7 +12,7 @@ using Dalamud.Game.ClientState.Conditions;
 using System.IO;
 using TargetLines.Attributes;
 
-[assembly: System.Reflection.AssemblyVersion("1.2.3")]
+[assembly: System.Reflection.AssemblyVersion("1.2.4")]
 
 namespace TargetLines;
 
