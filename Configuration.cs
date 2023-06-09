@@ -130,6 +130,14 @@ public class TargetSettingsPair {
                     priority += index;
                 }
             }
+
+            if (From.Jobs != 0) {
+                priority += 1;
+            }
+
+            if (To.Jobs != 0) {
+                priority += 1;
+            }
         }
 
         return priority;

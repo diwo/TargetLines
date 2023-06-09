@@ -69,7 +69,7 @@ internal class ConfigWindow : Window, IDisposable
         return should_save;
     }
 
-    private bool DrawJobFlagEditor(ref UInt64 flags, string guard) {
+    private bool DrawJobFlagEditor(ref ulong flags, string guard) {
         bool should_save = false;
         float charsize = ImGui.CalcTextSize("F").X * 24;
         if (ImGui.TreeNode($"Jobs##Jobs{guard}")) {
@@ -77,9 +77,9 @@ internal class ConfigWindow : Window, IDisposable
                 ImGui.SetTooltip("If any of these values are enabled, only these specific jobs will be filtered if the entity is a player. Otherwise, these values are completely ignored");
             }
             for (int index = 0; index < (int)ClassJob.Count; index++) {
-                UInt64 flag = (1UL << index);
+                ulong flag = ClassJobToBit(index);
                 bool toggled = (flags & flag) != 0;
-                string label = $"{(ClassJob)index}##{guard}{index}";
+                string label = $"{(ClassJob)index}##{guard}_{index}";
                 float start = ImGui.GetCursorPosX();
 
                 if (ImGui.Checkbox(label, ref toggled)) {

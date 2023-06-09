@@ -1,4 +1,5 @@
-﻿using Dalamud.Logging;
+﻿using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ImGuiNET;
 using System;
@@ -549,6 +550,7 @@ internal class TargetLine
     }
 
     public unsafe void Draw() {
+        ThisObject.UpdateTargetSettings();
         UpdateState();
         UpdateColors();
         

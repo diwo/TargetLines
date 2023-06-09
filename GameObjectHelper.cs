@@ -18,9 +18,13 @@ internal unsafe class GameObjectHelper {
 
     public GameObjectHelper(GameObject obj) {
         Object = obj;
+        UpdateTargetSettings();
+    }
+
+    public void UpdateTargetSettings() {
         Settings.Flags = TargetFlags.Any;
 
-        if (Globals.ClientState.LocalPlayer  != null ) {
+        if (Globals.ClientState.LocalPlayer != null) {
             if (Object.ObjectId == Globals.ClientState.LocalPlayer.ObjectId) {
                 Settings.Flags |= TargetFlags.Self;
             }
@@ -44,7 +48,7 @@ internal unsafe class GameObjectHelper {
             }
 
             ClassJob ID = (ClassJob)PlayerCharacter.ClassJob.Id;
-            Settings.Jobs = (ulong)(1 << (int)ID);
+            Settings.Jobs = ClassJobToBit(ID);
             if (DPSJobs.Contains(ID)) {
                 Settings.Flags |= TargetFlags.DPS;
                 if (MeleeDPSJobs.Contains(ID)) {

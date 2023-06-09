@@ -1,9 +1,5 @@
-﻿using Lumina.Excel.GeneratedSheets;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TargetLines; 
 public static class ClassJobHelper {
@@ -46,7 +42,7 @@ public static class ClassJobHelper {
     };
 
 
-    public enum ClassJob : byte {
+    public enum ClassJob : uint {
         /*  0 */ Adventurer = 0,
         /*  1 */ Gladiator,
         /*  2 */ Pugilist,
@@ -90,6 +86,22 @@ public static class ClassJobHelper {
         /* 40 */ Sage,
         Count
     };
+
+    public static ulong ClassJobToBit(ClassJob id) {
+        if (id >= ClassJob.Count || id < 0) {
+            return 0;
+        }
+
+        return (ulong)(1UL << (int)id);
+    }
+
+    public static ulong ClassJobToBit(int id) {
+        if (id >= (int)ClassJob.Count || id < 0) {
+            return 0;
+        }
+
+        return (ulong)(1UL << id);
+    }
 
     public static List<ClassJob> DPSJobs = new List<ClassJob> {
         ClassJob.Adventurer, ClassJob.Pugilist, ClassJob.Lancer, ClassJob.Archer,
@@ -152,8 +164,10 @@ public static class ClassJobHelper {
         if (goal.Jobs != 0 && (eflags & TargetFlags.Player) != 0) {
             bool invalid_job = true;
             for (int index = 0; index < (int)ClassJob.Count; index++) {
-                if ((goal.Jobs & (1UL << index)) != 0 && (entity.Jobs & (1UL << index)) != 0) {
+                ulong jobflag = ClassJobToBit(index);
+                if ((goal.Jobs & jobflag) != 0 && (entity.Jobs & jobflag) != 0) {
                     invalid_job = false;
+                    break;
                 }
             }
 
