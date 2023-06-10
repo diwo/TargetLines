@@ -1,5 +1,6 @@
 ﻿using Dalamud.Interface.Windowing;
 using ImGuiNET;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -113,7 +114,7 @@ internal class ConfigWindow : Window, IDisposable
 
     public override void Draw() {
         bool should_save = false;
-        
+
         int selected = (int)Globals.Config.saved.OnlyInCombat;
         if (ImGui.ListBox("Combat setting", ref selected, Enum.GetNames(typeof(InCombatOption)), (int)InCombatOption.Count)) {
             Globals.Config.saved.OnlyInCombat = (InCombatOption)selected;
@@ -380,6 +381,22 @@ internal class ConfigWindow : Window, IDisposable
         }
         if (ImGui.IsItemHovered()) {
             ImGui.SetTooltip("Set all of the values to the plugin defaults. This will delete any custom entries that you have made!");
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Copy Preset")) {
+            ImGui.SetClipboardText(JsonConvert.SerializeObject(Globals.Config.LineColors));
+        }
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("Copy your rules to the clipboard");
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Paste Preset")) {
+            Globals.Config.LineColors = JsonConvert.DeserializeObject<List<TargetSettingsPair>>(ImGui.GetClipboardText());
+        }
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("Paste rules from the clipboard. This overwrites your existing rules!");
         }
 
         if (should_save) {

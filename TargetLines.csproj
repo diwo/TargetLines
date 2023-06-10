@@ -53,6 +53,7 @@
 	  <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
 	  <LangVersion>11.0</LangVersion>
 	  <DefineConstants>PROBABLY_BAD</DefineConstants>
+	  <Optimize>True</Optimize>
 	</PropertyGroup>
   
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

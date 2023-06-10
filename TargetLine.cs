@@ -1,9 +1,6 @@
-﻿using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Logging;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
+﻿using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ImGuiNET;
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using static TargetLines.ClassJobHelper;
 
@@ -81,137 +78,118 @@ internal class TargetLine
     }
 
     Vector2 EvaluateQuadratic(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
-        float t2 = t * t;
         float mt = 1 - t;
-        float mt2 = mt * mt;
-        Vector2 point =
-            mt2 * p0 +
-            2 * mt * t * p1 +
-            t2 * p2;
+        Vector2 point = mt * mt * p0 + 2 * mt * t * p1 + t * t * p2;
         return point;
     }
 
     private void DrawSolidLine() {
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
+        float outlineThickness = Globals.Config.saved.OutlineThickness;
+        float lineThickness = Globals.Config.saved.LineThickness;
 
         if (UseQuad) {
-            if (Globals.Config.saved.OutlineThickness > 0) {
-                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.GetRaw(), Globals.Config.saved.OutlineThickness);
+            if (outlineThickness > 0) {
+                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.GetRaw(), outlineThickness);
             }
-            if (Globals.Config.saved.LineThickness > 0) {
-                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, LineColor.GetRaw(), Globals.Config.saved.LineThickness);
+            if (lineThickness > 0) {
+                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, LineColor.GetRaw(), lineThickness);
             }
         }
         else {
-            if (Globals.Config.saved.OutlineThickness > 0) {
-                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.GetRaw(), Globals.Config.saved.OutlineThickness);
+            if (outlineThickness > 0) {
+                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.GetRaw(), outlineThickness);
             }
-            if (Globals.Config.saved.LineThickness > 0) {
-                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, LineColor.GetRaw(), Globals.Config.saved.LineThickness);
+            if (lineThickness > 0) {
+                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, LineColor.GetRaw(), lineThickness);
             }
         }
     }
 
     private void DrawFancyLine() {
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
-        Vector2[] points = new Vector2[Globals.Config.saved.TextureCurveSampleCount];
-        Vector2 uv1;
-        Vector2 uv2;
+        int sampleCount = Globals.Config.saved.TextureCurveSampleCount;
+        Vector2[] points = new Vector2[sampleCount];
+        Vector2 uv1 = new Vector2(0, 0);
+        Vector2 uv2 = new Vector2(1.0f, 1.0f);
+        float invSampleCountMinusOne = 1f / (sampleCount - 1);
 
-        for (int index = 0; index < Globals.Config.saved.TextureCurveSampleCount; index++) {
-            float t = (float)index / (Globals.Config.saved.TextureCurveSampleCount - 1);
-            if (UseQuad) {
-                points[index] = EvaluateQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, t);
-            }
-            else {
-                points[index] = EvaluateCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, t);
-            }
+        for (int index = 0; index < sampleCount; index++) {
+            float t = index * invSampleCountMinusOne;
+            points[index] = UseQuad
+                ? EvaluateQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, t)
+                : EvaluateCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, t);
         }
 
         float currentTime = (float)Globals.Runtime;
         float pulsatingSpeed = Globals.Config.saved.WaveFrequencyScalar;
         float max = LineColor.a;
-        float min = LineColor.a * 0.5f;
+        float min = max * 0.5f;
         float pulsatingAmplitude = (max - min) * (1.0f - Globals.Config.saved.WaveAmplitudeOffset);
 
-        for (int index = 0; index < Globals.Config.saved.TextureCurveSampleCount - 1; index++) {
-            ABGR linecolor_index = new ABGR(0, 0, 0, 0);
-            ABGR outlinecolor_index = new ABGR(0, 0, 0, 0);
+        bool shouldCalculatePulsatingEffect = Globals.Config.saved.PulsingEffect;
+        bool shouldFadeToEnd = Globals.Config.saved.FadeToEnd;
+        float lineThickness = Globals.Config.saved.LineThickness;
+        float outlineThickness = Globals.Config.saved.OutlineThickness;
+
+        for (int index = 0; index < sampleCount - 1; index++) {
+            ABGR linecolor_index = LineColor;
+            ABGR outlinecolor_index = OutlineColor;
+
             Vector2 p1 = points[index];
             Vector2 p2 = points[index + 1];
-            uv1 = new Vector2(0, 0);
-            uv2 = new Vector2(1.0f, 1.0f);
 
             Vector2 dir = Vector2.Normalize(p2 - p1);
             Vector2 perp = new Vector2(-dir.Y, dir.X);
-            Vector2 p1_perp = p1 + perp * Globals.Config.saved.LineThickness * 2.0f;
-            Vector2 p2_perp = p2 + perp * Globals.Config.saved.LineThickness * 2.0f;
-            Vector2 p1_perp_inv = p1 - perp * Globals.Config.saved.LineThickness * 2.0f;
-            Vector2 p2_perp_inv = p2 - perp * Globals.Config.saved.LineThickness * 2.0f;
 
-            Vector2 p1_perpo = p1 + perp * Globals.Config.saved.OutlineThickness * 2.0f;
-            Vector2 p2_perpo = p2 + perp * Globals.Config.saved.OutlineThickness * 2.0f;
-            Vector2 p1_perp_invo = p1 - perp * Globals.Config.saved.OutlineThickness * 2.0f;
-            Vector2 p2_perp_invo = p2 - perp * Globals.Config.saved.OutlineThickness * 2.0f;
+            Vector2 p1_perp = p1 + perp * lineThickness * 2.0f;
+            Vector2 p2_perp = p2 + perp * lineThickness * 2.0f;
+            Vector2 p1_perp_inv = p1 - perp * lineThickness * 2.0f;
+            Vector2 p2_perp_inv = p2 - perp * lineThickness * 2.0f;
 
-            linecolor_index.CopyValues(LineColor);
-            outlinecolor_index.CopyValues(OutlineColor);
+            Vector2 p1_perpo = p1 + perp * outlineThickness * 2.0f;
+            Vector2 p2_perpo = p2 + perp * outlineThickness * 2.0f;
+            Vector2 p1_perp_invo = p1 - perp * outlineThickness * 2.0f;
+            Vector2 p2_perp_invo = p2 - perp * outlineThickness * 2.0f;
 
-
-            // Calculate pulsating alpha value
-            if (Globals.Config.saved.PulsingEffect) {
-                float p = (float)index / ((float)Globals.Config.saved.TextureCurveSampleCount - 1);
+            if (shouldCalculatePulsatingEffect) {
+                float p = index * invSampleCountMinusOne;
                 float pulsatingAlpha = MathF.Sin(-currentTime * pulsatingSpeed + (p * MathF.PI) + (MathF.PI / 2.0f));
-                pulsatingAlpha *= pulsatingAmplitude;
-                pulsatingAlpha += min;
-
-                if (pulsatingAlpha < min) {
-                    pulsatingAlpha = min;
-                }
-                if (pulsatingAlpha > max) {
-                    pulsatingAlpha = max;
-                }
-
+                pulsatingAlpha = Math.Clamp(pulsatingAlpha * pulsatingAmplitude + min, min, max);
                 linecolor_index.a = (byte)pulsatingAlpha;
                 outlinecolor_index.a = (byte)pulsatingAlpha;
             }
 
-            if (Globals.Config.saved.FadeToEnd) {
-                outlinecolor_index.a = (byte)MathUtils.Lerpf((float)outlinecolor_index.a,
+            if (shouldFadeToEnd) {
+                float alphaFade = MathUtils.Lerpf((float)outlinecolor_index.a,
                     (float)(outlinecolor_index.a * Globals.Config.saved.FadeToEndScalar),
-                    (float)index / (float)(Globals.Config.saved.TextureCurveSampleCount - 1)
-                );
+                    (float)index * invSampleCountMinusOne);
 
-                outlinecolor_index.a = (byte)MathUtils.Lerpf((float)outlinecolor_index.a,
-                    (float)(outlinecolor_index.a * Globals.Config.saved.FadeToEndScalar),
-                    (float)index / (float)(Globals.Config.saved.TextureCurveSampleCount - 1)
-                );
+                outlinecolor_index.a = (byte)alphaFade;
             }
 
-            if (linecolor_index.a != 0 && Globals.Config.saved.LineThickness != 0) {
+            if (linecolor_index.a != 0 && lineThickness != 0) {
                 drawlist.AddImageQuad(Globals.LineTexture.ImGuiHandle, p1_perp_inv, p2_perp_inv, p2_perp, p1_perp, uv1, new Vector2(uv1.X, uv2.Y), uv2, new Vector2(uv2.X, uv1.Y), linecolor_index.GetRaw());
             }
 
-            if (outlinecolor_index.a != 0 && Globals.Config.saved.OutlineThickness != 0) {
+            if (outlinecolor_index.a != 0 && outlineThickness != 0) {
                 drawlist.AddImageQuad(Globals.OutlineTexture.ImGuiHandle, p1_perp_invo, p2_perp_invo, p2_perpo, p1_perpo, uv1, new Vector2(uv1.X, uv2.Y), uv2, new Vector2(uv2.X, uv1.Y), outlinecolor_index.GetRaw());
             }
         }
 
         Vector2 start_dir = Vector2.Normalize(points[1] - points[0]);
-        Vector2 end_dir = Vector2.Normalize(points[Globals.Config.saved.TextureCurveSampleCount - 1] - points[Globals.Config.saved.TextureCurveSampleCount - 2]);
-        Vector2 start_perp = new Vector2(-start_dir.Y, start_dir.X) * Globals.Config.saved.LineThickness * 2.0f;
-        Vector2 end_perp = new Vector2(-end_dir.Y, end_dir.X) * Globals.Config.saved.LineThickness * 2.0f;
-        uv1 = new Vector2(0, 0);
-        uv2 = new Vector2(1.0f, 1.0f);
+        Vector2 end_dir = Vector2.Normalize(points[sampleCount - 1] - points[sampleCount - 2]);
+        Vector2 start_perp = new Vector2(-start_dir.Y, start_dir.X) * lineThickness * 2.0f;
+        Vector2 end_perp = new Vector2(-end_dir.Y, end_dir.X) * lineThickness * 2.0f;
 
         Vector2 start_p1 = points[0] - start_perp;
         Vector2 start_p2 = points[0] + start_perp;
-        Vector2 end_p1 = points[Globals.Config.saved.TextureCurveSampleCount - 1] - end_perp;
-        Vector2 end_p2 = points[Globals.Config.saved.TextureCurveSampleCount - 1] + end_perp;
+        Vector2 end_p1 = points[sampleCount - 1] - end_perp;
+        Vector2 end_p2 = points[sampleCount - 1] + end_perp;
 
         ABGR linecolor_end = new ABGR(0, 0, 0, 0);
         linecolor_end.CopyValues(LineColor);
-        if (Globals.Config.saved.FadeToEnd) {
+        if (shouldFadeToEnd) {
             linecolor_end.a = (byte)(linecolor_end.a * Globals.Config.saved.FadeToEndScalar);
         }
 
@@ -224,10 +202,6 @@ internal class TargetLine
     }
 
     private void UpdateMidPosition() {
-        GameObjectHelper target = ThisObject.Target;
-        bool has_target = target != null;
-        float height_fix = 1.0f;
-
         MidPosition = (Position + TargetPosition) * 0.5f;
 
         if (ThisObject.IsPlayerCharacter()) {
@@ -237,16 +211,16 @@ internal class TargetLine
             MidPosition.Y += Globals.Config.saved.EnemyHeightBump;
         }
 
-        if (!UseQuad) {
-            height_fix = 0.75f; // something wrong with my cubic math, this "fixes" it
+        float height_fix = 0.75f;
+        if (UseQuad) {
+            height_fix = 1.0f;
         }
 
         if (State == LineState.Dying) {
             float alpha = StateTime / Globals.Config.saved.NoTargetFadeTime;
             height_fix *= 1.0f - alpha;
         }
-
-        if (State == LineState.NewTarget) {
+        else if (State == LineState.NewTarget) {
             float alpha = StateTime / Globals.Config.saved.NewTargetEaseTime;
             height_fix *= alpha;
         }
@@ -254,28 +228,22 @@ internal class TargetLine
         MidPosition.Y += (MidHeight * Globals.Config.saved.ArcHeightScalar) * height_fix;
     }
 
+
     private void UpdateStateNewTarget() {
         Vector3 start = ThisObject.Position;
         Vector3 end = ThisObject.Target.Position;
         float start_height = ThisObject.GetHeight();
         float end_height = ThisObject.Target.GetHeight();
-        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
-        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
         float mid_height = (start_height + end_height) * 0.5f;
-        float alpha = StateTime / Globals.Config.saved.NewTargetEaseTime;
+        float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
         LastTargetHeight = end_height;
         MidHeight = mid_height;
 
-        start.Y += start_height_scaled;
-        end.Y += end_height_scaled;
-        
-        if (alpha < 0) {
-            alpha = 0;
-        }
+        start.Y += start_height * Globals.Config.saved.HeightScale;
+        end.Y += end_height * Globals.Config.saved.HeightScale;
 
         if (alpha >= 1) {
-            alpha = 1.0f;
             State = LineState.Idle;
             LastTargetId = ThisObject.Target.ObjectId;
         }
@@ -286,11 +254,7 @@ internal class TargetLine
     }
 
     private void UpdateStateDying_Anim(float mid_height) {
-        float alpha = (StateTime / Globals.Config.saved.NoTargetFadeTime) * Globals.Config.saved.DeathAnimationTimeScale;
-
-        if (alpha > 1.0f) {
-            alpha = 1.0f;
-        }
+        float alpha = Math.Min(1, (StateTime / Globals.Config.saved.NoTargetFadeTime) * Globals.Config.saved.DeathAnimationTimeScale);
 
         switch (Globals.Config.saved.DeathAnimation) {
             case (LineDeathAnimation.Linear):
@@ -310,22 +274,15 @@ internal class TargetLine
         Vector3 end = LastTargetPosition;
         float start_height = ThisObject.GetHeight();
         float end_height = LastTargetHeight;
-        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
-        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
         float mid_height = (start_height + end_height) * 0.5f;
-        float alpha = StateTime / Globals.Config.saved.NoTargetFadeTime;
+        float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NoTargetFadeTime));
 
         UpdateStateDying_Anim(mid_height);
 
-        start.Y += start_height_scaled;
-        end.Y += end_height_scaled;
-
-        if (alpha < 0) {
-            alpha = 0;
-        }
+        start.Y += start_height * Globals.Config.saved.HeightScale;
+        end.Y += end_height * Globals.Config.saved.HeightScale;
 
         if (alpha >= 1) {
-            alpha = 1.0f;
             ShouldDelete = true;
         }
 
@@ -339,29 +296,23 @@ internal class TargetLine
         Vector3 end = ThisObject.Target.Position;
         float start_height = ThisObject.GetHeight();
         float end_height = ThisObject.Target.GetHeight();
-        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
-        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
         float mid_height = (start_height + end_height) * 0.5f;
-        float alpha = StateTime / Globals.Config.saved.NewTargetEaseTime;
+        Vector3 target_position = ThisObject.Target.Position;
+        float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
         start.Y += LastTargetHeight * Globals.Config.saved.HeightScale;
-        end.Y += end_height_scaled;
-
-        if (alpha < 0) {
-            alpha = 0;
-        }
+        end.Y += end_height * Globals.Config.saved.HeightScale;
 
         if (alpha >= 1) {
-            alpha = 1.0f;
             State = LineState.Idle;
             LastTargetId = ThisObject.Target.ObjectId;
         }
 
         Position = ThisObject.Position;
-        Position.Y += start_height_scaled;
+        Position.Y += start_height * Globals.Config.saved.HeightScale;
 
         TargetPosition = Vector3.Lerp(start, end, alpha);
-        LastTargetPosition2 = Vector3.Lerp(LastTargetPosition, ThisObject.Target.Position, alpha);
+        LastTargetPosition2 = Vector3.Lerp(LastTargetPosition, target_position, alpha);
         MidHeight = MathUtils.Lerpf(LastMidHeight, mid_height, alpha);
     }
 
@@ -452,10 +403,9 @@ internal class TargetLine
         HadTarget = has_target;
     }
 
-    
     private void UpdateColors() {
-        float alpha = 1.0f;
         GameObjectHelper target = ThisObject.Target;
+        float alpha = 1.0f;
 
         if (Globals.Config.saved.LineColor.Visible) {
             LineColor.CopyValues(Globals.Config.saved.LineColor.Color);
@@ -467,29 +417,28 @@ internal class TargetLine
             OutlineColor.CopyValues(LastOutlineColor);
         }
         else {
+            ABGR tempLineColor = new ABGR(0, 0, 0, 0);
+            ABGR tempOutlineColor = new ABGR(0, 0, 0, 0);
             int highestPriority = -1;
             foreach (TargetSettingsPair settings in Globals.Config.LineColors) {
-                var from = settings.From;
-                var to = settings.To;
-                var value = settings.LineColor;
-
-                // entries further from 0 are more pedantic, so this should help use choose the most specific entry
                 int priority = settings.GetPairPriority();
                 if (priority > highestPriority) {
-                    bool should_copy = CompareTargetSettings(ref from, ref ThisObject.Settings);
+                    bool should_copy = CompareTargetSettings(ref settings.From, ref ThisObject.Settings);
                     if (should_copy) {
-                        should_copy = CompareTargetSettings(ref to, ref target.Settings);
+                        should_copy = CompareTargetSettings(ref settings.To, ref target.Settings);
                     }
                     if (should_copy) {
                         highestPriority = priority;
-                        LineColor.CopyValues(value.Color);
-                        OutlineColor.CopyValues(value.OutlineColor);
-                        UseQuad = value.UseQuad;
-                        Visible = value.Visible;
+                        tempLineColor.CopyValues(settings.LineColor.Color);
+                        tempOutlineColor.CopyValues(settings.LineColor.OutlineColor);
+                        UseQuad = settings.LineColor.UseQuad;
+                        Visible = settings.LineColor.Visible;
                     }
                 }
             }
 
+            LineColor.CopyValues(tempLineColor);
+            OutlineColor.CopyValues(tempOutlineColor);
             LastLineColor.CopyValues(LineColor);
             LastOutlineColor.CopyValues(OutlineColor);
         }
@@ -506,18 +455,16 @@ internal class TargetLine
         GameObjectHelper target = ThisObject.Target;
         bool vis0 = ThisObject.IsVisible(Globals.Config.saved.OcclusionCulling);
         bool vis1 = false;
-        bool vis2 = false;
+
         if (target != null && target.IsBattleChara() && !target.IsPlayerCharacter()) {
 #if (PROBABLY_BAD)
             // for debug
-            if (!target.IsVisible(Globals.Config.saved.OcclusionCulling)) {
-                vis1 |= target.IsVisible(Globals.Config.saved.OcclusionCulling);
-            }
+            vis1 |= target.IsVisible(Globals.Config.saved.OcclusionCulling);
 #else
-            // if target is an enemy, and it is not visible, ignore all other checks and abort
-            if (!target.IsVisible(true)) {
-                return false;
-            }
+        // if target is an enemy, and it is not visible, ignore all other checks and abort
+        if (!target.IsVisible(true)) {
+            return false;
+        }
 #endif
         }
         else {
@@ -526,22 +473,22 @@ internal class TargetLine
 
         DrawBeginCap = Service.Gui.WorldToScreen(Position, out ScreenPos);
         DrawEndCap = Service.Gui.WorldToScreen(TargetPosition, out TargetScreenPos);
-        vis2 = Service.Gui.WorldToScreen(MidPosition, out MidScreenPos);
+        bool vis2 = Service.Gui.WorldToScreen(MidPosition, out MidScreenPos);
 
-        if ((DrawBeginCap | DrawEndCap | vis2) == false) {
+        if (!(DrawBeginCap || DrawEndCap || vis2)) {
             return false;
         }
 
         if (Globals.Config.saved.OcclusionCulling) {
-            if (DrawBeginCap == false) {
+            if (!DrawBeginCap) {
                 vis0 = false;
             }
 
-            if (DrawEndCap == false) {
+            if (!DrawEndCap) {
                 vis1 = false;
             }
 
-            if (!(vis0 && vis0)) {
+            if (!(vis0 && vis1)) {
                 return false;
             }
         }

@@ -12,7 +12,7 @@ using Dalamud.Game.ClientState.Conditions;
 using System.IO;
 using TargetLines.Attributes;
 
-[assembly: System.Reflection.AssemblyVersion("1.2.5")]
+[assembly: System.Reflection.AssemblyVersion("1.2.6")]
 
 namespace TargetLines;
 
@@ -47,7 +47,6 @@ public class Plugin : IDalamudPlugin {
 
         Globals.CommandManager = commandManager;
         Globals.PluginCommandManager = new PluginCommandManager<Plugin>(this, commandManager);
-        //Commands.Initialize();
 
         TargetLineDict = new Dictionary<uint, TargetLine>();
         InitializeCamera();
@@ -86,69 +85,53 @@ public class Plugin : IDalamudPlugin {
 
     private unsafe void InitializeCamera() {
         Globals.CameraManager = (CameraManager*)Service.SigScanner.GetStaticAddressFromSig("4C 8D 35 ?? ?? ?? ?? 85 D2"); // g_ControlSystem_CameraManager
-        PluginLog.Warning($"Camera Pointer {((IntPtr)Globals.CameraManager->WorldCamera).ToString("X")}");
     }
 
     private unsafe void DrawOverlay() {
         FFXIVClientStructs.FFXIV.Client.System.Framework.Framework* framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
-
         Globals.Runtime += framework->FrameDeltaTime;
 
-        if (Globals.ClientState.LocalPlayer == null) {
-            if (TargetLineDict.Count > 0) {
-                TargetLineDict.Clear();
-            }
+        if (Globals.ClientState.LocalPlayer == null && TargetLineDict.Count > 0) {
+            TargetLineDict.Clear();
         }
 
         for (int index = 0; index < Service.ObjectTable.Length; index++) {
             GameObject obj = Service.ObjectTable[index];
-            uint id;
             bool should_delete = false;
-            if (obj != null) {
-                id = obj.ObjectId;
-                if (!obj.IsValid()) {
+
+            if (obj == null || !obj.IsValid()) {
+                continue;
+            }
+
+            uint id = obj.ObjectId;
+
+            TargetLine targetLine = null;
+            if (TargetLineDict.TryGetValue(id, out targetLine)) {
+                if (targetLine.ShouldDelete) {
                     should_delete = true;
                 }
+            }
 
-                // delete keys that are unused for a bit
-                if (TargetLineDict.ContainsKey(id)) {
-                    if (TargetLineDict[id].ShouldDelete) {
-                        should_delete = true;
-                    }
+            if (should_delete) {
+                TargetLineDict.Remove(id);
+                continue;
+            }
+
+            GameObjectHelper gobj = new GameObjectHelper(obj);
+
+            if (gobj.Object.IsValid() && gobj.TargetObject != null && gobj.TargetObject.IsValid()) {
+                if (targetLine == null) {
+                    targetLine = new TargetLine(gobj);
+                    TargetLineDict.Add(id, targetLine);
                 }
+            }
 
-                if (should_delete) {
-                    if (TargetLineDict.ContainsKey(id)) {
-                        TargetLineDict.Remove(id);
-                    }
-                    continue;
-                }
+            if (Globals.ClientState.IsPvP || targetLine == null) {
+                continue;
+            }
 
-                GameObjectHelper gobj = new GameObjectHelper(obj);
-
-                if (gobj.Object.IsValid() && gobj.TargetObject != null && gobj.TargetObject.IsValid()) {
-                    if (!TargetLineDict.ContainsKey(id)) {
-                        TargetLineDict.Add(id, new TargetLine(gobj));
-                    }
-                }
-
-                bool doDraw = TargetLineDict.ContainsKey(id);
-
-#if (!PROBABLY_BAD)
-                if (Globals.ClientState.IsPvP) {
-                    doDraw = false;
-                }
-#endif
-
-                if (doDraw) {
-                    bool condition = TargetLineDict[id].ThisObject.Object.IsValid();
-#if (!PROBABLY_BAD)
-                    condition = condition && TargetLineDict[id].ThisObject.IsTargetable();
-#endif
-                    if (condition) {
-                        TargetLineDict[id].Draw();
-                    }
-                }
+            if (targetLine.ThisObject.Object.IsValid() && targetLine.ThisObject.IsTargetable()) {
+                targetLine.Draw();
             }
         }
     }
@@ -182,7 +165,6 @@ public class Plugin : IDalamudPlugin {
     protected virtual void Dispose(bool disposing) {
         if (!disposing) return;
 
-        //Commands.Uninitialize();
         Globals.PluginCommandManager.Dispose();
 
         PluginInterface.SavePluginConfig(Globals.Config);
@@ -191,6 +173,7 @@ public class Plugin : IDalamudPlugin {
         Globals.WindowSystem.RemoveAllWindows();
 
         Globals.LineTexture.Dispose();
+        Globals.OutlineTexture.Dispose();
         Globals.EdgeTexture.Dispose();
     }
 
