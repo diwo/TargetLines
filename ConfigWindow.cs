@@ -126,9 +126,9 @@ internal class ConfigWindow : Window, IDisposable
             ImGui.SetTooltip("If enabled, target lines will stop drawing if your weapon is sheathed");
         }
 
-        should_save |= ImGui.Checkbox("Occlusion Culling (Always Enabled for enemies!)", ref Globals.Config.saved.OcclusionCulling);
+        should_save |= ImGui.Checkbox("Occlusion Culling", ref Globals.Config.saved.OcclusionCulling);
         if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("If enabled, target lines will stop drawing if both their start and end points are not visible");
+            ImGui.SetTooltip("If enabled, target lines will stop drawing if both their start and end points are not visible. Note that this is always enabled for enemies! Additionally, this has a relatively notable performance impact.");
         }
 
         should_save |= ImGui.Checkbox("Use solid color instead of texture", ref Globals.Config.saved.SolidColor);

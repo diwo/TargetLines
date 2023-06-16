@@ -105,6 +105,10 @@ internal unsafe class GameObjectHelper {
         return Object is BattleChara;
     }
 
+    public bool IsBattleNPC() {
+        return Object.ObjectKind == ObjectKind.BattleNpc;
+    }
+
     public bool IsPlayerCharacter() {
         return Object.ObjectKind == ObjectKind.Player;
     }
@@ -117,15 +121,20 @@ internal unsafe class GameObjectHelper {
             return false;
         }
 
-        if (Globals.IsVisible(safePos, occlusion)) {
-            return Globals.IsVisible(GetHeadPosition(), occlusion);
-        }
-
-        return false;
+        return Globals.IsVisible(GetHeadPosition(), occlusion);
     }
 
     public unsafe bool IsTargetable() {
         return RealObject->GetIsTargetable();
+    }
+
+    public unsafe bool TargetIsTargetable() {
+        if (TargetObject == null) {
+            return false;
+        }
+
+        FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* targetobj = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)Object.Address;
+        return targetobj->GetIsTargetable();
     }
 
     public unsafe FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* RealObject {

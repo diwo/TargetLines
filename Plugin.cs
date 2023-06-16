@@ -12,7 +12,7 @@ using Dalamud.Game.ClientState.Conditions;
 using System.IO;
 using TargetLines.Attributes;
 
-[assembly: System.Reflection.AssemblyVersion("1.2.6")]
+[assembly: System.Reflection.AssemblyVersion("1.2.7")]
 
 namespace TargetLines;
 
@@ -118,12 +118,14 @@ public class Plugin : IDalamudPlugin {
             }
 
             GameObjectHelper gobj = new GameObjectHelper(obj);
-
-            if (gobj.Object.IsValid() && gobj.TargetObject != null && gobj.TargetObject.IsValid()) {
-                if (targetLine == null) {
-                    targetLine = new TargetLine(gobj);
-                    TargetLineDict.Add(id, targetLine);
-                }
+            bool valid = gobj.Object.IsValid() && gobj.TargetObject != null && gobj.TargetObject.IsValid() && targetLine == null;
+            // testing
+#if (!PROBABLY_BAD)
+            valid |= gobj.TargetIsTargetable();
+#endif
+            if (valid) {
+                targetLine = new TargetLine(gobj);
+                TargetLineDict.Add(id, targetLine);
             }
 
             if (Globals.ClientState.IsPvP || targetLine == null) {

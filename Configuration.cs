@@ -158,7 +158,7 @@ public class SavedConfig {
     public float WaveFrequencyScalar = 3.0f;
     public float FadeToEndScalar = 0.2f;
     public float HeightScale = 1.0f;
-    public int TextureCurveSampleCount = 48;
+    public int TextureCurveSampleCount = 47;
     public InCombatOption OnlyInCombat = InCombatOption.None;
     public bool OnlyUnsheathed = false;
     public bool SolidColor = false;

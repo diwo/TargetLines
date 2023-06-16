@@ -1,10 +1,21 @@
 ﻿using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ImGuiNET;
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
+
+internal struct LinePoint {
+    public Vector2 Pos;
+    public bool Visible;
+
+    public LinePoint(Vector2 pos, bool visible) {
+        Pos = pos;
+        Visible = visible;
+    }
+}
 
 internal class TargetLine
 {
@@ -41,6 +52,7 @@ internal class TargetLine
     private ulong LastTargetId = 0;
 
     private bool DrawBeginCap = false;
+    private bool DrawMid = false;
     private bool DrawEndCap = false;
 
     private float StateTime = 0.0f;
@@ -49,6 +61,11 @@ internal class TargetLine
     private float LastTargetHeight = 0.0f;
 
     private unsafe Framework* Framework = null;
+
+    private LinePoint[] Points;
+    private float LinePointStep;
+
+    private const float HPI = MathF.PI * 0.5f;
 
     public TargetLine(GameObjectHelper obj) {
         ThisObject = obj;
@@ -61,15 +78,18 @@ internal class TargetLine
             LastTargetPosition = ThisObject.Position;
             LastTargetPosition2 = LastTargetPosition;
         }
+
+        Points = new LinePoint[Globals.Config.saved.TextureCurveSampleCount];
+        LinePointStep = 1.0f / (float)(Points.Length - 1);
     }
 
-    Vector2 EvaluateCubic(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3, float t) {
+    Vector3 EvaluateCubic(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t) {
         float t2 = t * t;
         float t3 = t2 * t;
         float mt = 1 - t;
         float mt2 = mt * mt;
         float mt3 = mt2 * mt;
-        Vector2 point =
+        Vector3 point =
             mt3 * p0 +
             3 * mt2 * t * p1 +
             3 * mt * t2 * p2 +
@@ -77,9 +97,9 @@ internal class TargetLine
         return point;
     }
 
-    Vector2 EvaluateQuadratic(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
+    Vector3 EvaluateQuadratic(Vector3 p0, Vector3 p1, Vector3 p2, float t) {
         float mt = 1 - t;
-        Vector2 point = mt * mt * p0 + 2 * mt * t * p1 + t * t * p2;
+        Vector3 point = mt * mt * p0 + 2 * mt * t * p1 + t * t * p2;
         return point;
     }
 
@@ -108,18 +128,9 @@ internal class TargetLine
 
     private void DrawFancyLine() {
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
-        int sampleCount = Globals.Config.saved.TextureCurveSampleCount;
-        Vector2[] points = new Vector2[sampleCount];
         Vector2 uv1 = new Vector2(0, 0);
         Vector2 uv2 = new Vector2(1.0f, 1.0f);
-        float invSampleCountMinusOne = 1f / (sampleCount - 1);
-
-        for (int index = 0; index < sampleCount; index++) {
-            float t = index * invSampleCountMinusOne;
-            points[index] = UseQuad
-                ? EvaluateQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, t)
-                : EvaluateCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, t);
-        }
+        int sampleCount = Points.Length;
 
         float currentTime = (float)Globals.Runtime;
         float pulsatingSpeed = Globals.Config.saved.WaveFrequencyScalar;
@@ -129,32 +140,38 @@ internal class TargetLine
 
         bool shouldCalculatePulsatingEffect = Globals.Config.saved.PulsingEffect;
         bool shouldFadeToEnd = Globals.Config.saved.FadeToEnd;
-        float lineThickness = Globals.Config.saved.LineThickness;
-        float outlineThickness = Globals.Config.saved.OutlineThickness;
+        float lineThickness = Globals.Config.saved.LineThickness * 2.0f;
+        float outlineThickness = Globals.Config.saved.OutlineThickness * 2.0f;
 
         for (int index = 0; index < sampleCount - 1; index++) {
-            ABGR linecolor_index = LineColor;
-            ABGR outlinecolor_index = OutlineColor;
+            LinePoint point = Points[index];
+            LinePoint nextpoint = Points[index + 1];
+            if (!point.Visible && !nextpoint.Visible) {
+                continue;
+            }
 
-            Vector2 p1 = points[index];
-            Vector2 p2 = points[index + 1];
+            Vector2 p1 = point.Pos;
+            Vector2 p2 = nextpoint.Pos;
 
             Vector2 dir = Vector2.Normalize(p2 - p1);
             Vector2 perp = new Vector2(-dir.Y, dir.X);
 
-            Vector2 p1_perp = p1 + perp * lineThickness * 2.0f;
-            Vector2 p2_perp = p2 + perp * lineThickness * 2.0f;
-            Vector2 p1_perp_inv = p1 - perp * lineThickness * 2.0f;
-            Vector2 p2_perp_inv = p2 - perp * lineThickness * 2.0f;
+            Vector2 p1_perp = p1 + perp * lineThickness;
+            Vector2 p2_perp = p2 + perp * lineThickness;
+            Vector2 p1_perp_inv = p1 - perp * lineThickness;
+            Vector2 p2_perp_inv = p2 - perp * lineThickness;
 
-            Vector2 p1_perpo = p1 + perp * outlineThickness * 2.0f;
-            Vector2 p2_perpo = p2 + perp * outlineThickness * 2.0f;
-            Vector2 p1_perp_invo = p1 - perp * outlineThickness * 2.0f;
-            Vector2 p2_perp_invo = p2 - perp * outlineThickness * 2.0f;
+            Vector2 p1_perpo = p1 + perp * outlineThickness;
+            Vector2 p2_perpo = p2 + perp * outlineThickness;
+            Vector2 p1_perp_invo = p1 - perp * outlineThickness;
+            Vector2 p2_perp_invo = p2 - perp * outlineThickness;
+
+            ABGR linecolor_index = LineColor;
+            ABGR outlinecolor_index = OutlineColor;
 
             if (shouldCalculatePulsatingEffect) {
-                float p = index * invSampleCountMinusOne;
-                float pulsatingAlpha = MathF.Sin(-currentTime * pulsatingSpeed + (p * MathF.PI) + (MathF.PI / 2.0f));
+                float p = index * LinePointStep;
+                float pulsatingAlpha = MathF.Sin(-currentTime * pulsatingSpeed + (p * MathF.PI) + HPI);
                 pulsatingAlpha = Math.Clamp(pulsatingAlpha * pulsatingAmplitude + min, min, max);
                 linecolor_index.a = (byte)pulsatingAlpha;
                 outlinecolor_index.a = (byte)pulsatingAlpha;
@@ -163,7 +180,7 @@ internal class TargetLine
             if (shouldFadeToEnd) {
                 float alphaFade = MathUtils.Lerpf((float)outlinecolor_index.a,
                     (float)(outlinecolor_index.a * Globals.Config.saved.FadeToEndScalar),
-                    (float)index * invSampleCountMinusOne);
+                    (float)index * LinePointStep);
 
                 outlinecolor_index.a = (byte)alphaFade;
             }
@@ -177,15 +194,15 @@ internal class TargetLine
             }
         }
 
-        Vector2 start_dir = Vector2.Normalize(points[1] - points[0]);
-        Vector2 end_dir = Vector2.Normalize(points[sampleCount - 1] - points[sampleCount - 2]);
-        Vector2 start_perp = new Vector2(-start_dir.Y, start_dir.X) * lineThickness * 2.0f;
-        Vector2 end_perp = new Vector2(-end_dir.Y, end_dir.X) * lineThickness * 2.0f;
+        Vector2 start_dir = Vector2.Normalize(Points[1].Pos - Points[0].Pos);
+        Vector2 end_dir = Vector2.Normalize(Points[sampleCount - 1].Pos - Points[sampleCount - 2].Pos);
+        Vector2 start_perp = new Vector2(-start_dir.Y, start_dir.X) * lineThickness;
+        Vector2 end_perp = new Vector2(-end_dir.Y, end_dir.X) * lineThickness;
 
-        Vector2 start_p1 = points[0] - start_perp;
-        Vector2 start_p2 = points[0] + start_perp;
-        Vector2 end_p1 = points[sampleCount - 1] - end_perp;
-        Vector2 end_p2 = points[sampleCount - 1] + end_perp;
+        Vector2 start_p1 = Points[0].Pos - start_perp;
+        Vector2 start_p2 = Points[0].Pos + start_perp;
+        Vector2 end_p1 = Points[sampleCount - 1].Pos - end_perp;
+        Vector2 end_p2 = Points[sampleCount - 1].Pos + end_perp;
 
         ABGR linecolor_end = new ABGR(0, 0, 0, 0);
         linecolor_end.CopyValues(LineColor);
@@ -453,33 +470,45 @@ internal class TargetLine
 
     private bool UpdateVisibility() {
         GameObjectHelper target = ThisObject.Target;
-        bool vis0 = ThisObject.IsVisible(Globals.Config.saved.OcclusionCulling);
-        bool vis1 = false;
+        bool occlusion = Globals.Config.saved.OcclusionCulling;
 
-        if (target != null && target.IsBattleChara() && !target.IsPlayerCharacter()) {
-#if (PROBABLY_BAD)
-            // for debug
-            vis1 |= target.IsVisible(Globals.Config.saved.OcclusionCulling);
-#else
-        // if target is an enemy, and it is not visible, ignore all other checks and abort
-        if (!target.IsVisible(true)) {
-            return false;
+#if (!PROBABLY_BAD)
+        if (ThisObject.IsBattleNPC()) {
+            occlusion = true;
         }
 #endif
+
+        bool vis0 = ThisObject.IsVisible(occlusion);
+        bool vis1 = false;
+
+        if (target != null) {
+            vis1 |= target.IsVisible(occlusion);
         }
         else {
-            vis1 |= Globals.IsVisible(TargetPosition, Globals.Config.saved.OcclusionCulling);
+            vis1 |= Globals.IsVisible(TargetPosition, occlusion);
         }
 
         DrawBeginCap = Service.Gui.WorldToScreen(Position, out ScreenPos);
         DrawEndCap = Service.Gui.WorldToScreen(TargetPosition, out TargetScreenPos);
-        bool vis2 = Service.Gui.WorldToScreen(MidPosition, out MidScreenPos);
+        DrawMid = Service.Gui.WorldToScreen(MidPosition, out MidScreenPos);
 
-        if (!(DrawBeginCap || DrawEndCap || vis2)) {
+        if (Globals.Config.saved.SolidColor == false) {
+            for (int index = 0; index < Points.Length; index++) {
+                float t = index * LinePointStep;
+                Vector3 point = UseQuad
+                    ? EvaluateQuadratic(Position, MidPosition, TargetPosition, t)
+                    : EvaluateCubic(Position, MidPosition, MidPosition, TargetPosition, t);
+
+                bool vis = Service.Gui.WorldToScreen(point, out Vector2 screenPoint);
+                Points[index] = new LinePoint(screenPoint, vis);
+            }
+        }
+
+        if (!(DrawBeginCap || DrawEndCap || DrawMid)) {
             return false;
         }
 
-        if (Globals.Config.saved.OcclusionCulling) {
+        if (occlusion) {
             if (!DrawBeginCap) {
                 vis0 = false;
             }
