@@ -482,10 +482,10 @@ internal class TargetLine
         bool vis1 = false;
 
         if (target != null) {
-            vis1 |= target.IsVisible(occlusion);
+            vis1 = target.IsVisible(occlusion);
         }
         else {
-            vis1 |= Globals.IsVisible(TargetPosition, occlusion);
+            vis1 = Globals.IsVisible(TargetPosition, occlusion);
         }
 
         DrawBeginCap = Service.Gui.WorldToScreen(Position, out ScreenPos);

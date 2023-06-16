@@ -121,7 +121,7 @@ public class Plugin : IDalamudPlugin {
             bool valid = gobj.Object.IsValid() && gobj.TargetObject != null && gobj.TargetObject.IsValid() && targetLine == null;
             // testing
 #if (!PROBABLY_BAD)
-            valid |= gobj.TargetIsTargetable();
+            valid = valid && gobj.TargetIsTargetable();
 #endif
             if (valid) {
                 targetLine = new TargetLine(gobj);
