@@ -1,11 +1,11 @@
 ﻿using Dalamud.Interface;
+using Dalamud.Interface.Utility;
 using ImGuiNET;
 using System;
 
 namespace TargetLines;
 
-internal class ImGuiUtils
-{
+internal class ImGuiUtils {
     public static bool WrapBegin(string name, ImGuiWindowFlags flags, Action fn) {
         bool began = false;
 

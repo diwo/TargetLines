@@ -1,21 +1,19 @@
-﻿using Dalamud.Interface.Windowing;
+﻿using DrahsidLib;
 using ImGuiNET;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Numerics;
 using System.Text;
 using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
 
-internal class ConfigWindow : Window, IDisposable
-{
+internal class ConfigWindow : WindowWrapper {
     public static string ConfigWindowName = "Target Lines Config";
+    private static Vector2 MinSize = new Vector2(240, 240);
 
-    public ConfigWindow() : base(ConfigWindowName) { }
+    public ConfigWindow() : base(ConfigWindowName, MinSize) { }
 
     private string AddSpacesToCamelCase(string text) {
         if (string.IsNullOrEmpty(text)) {
@@ -403,6 +401,5 @@ internal class ConfigWindow : Window, IDisposable
             Globals.Config.Save();
         }
     }
-
-    public void Dispose() { }
 }
+

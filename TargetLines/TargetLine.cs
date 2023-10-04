@@ -1,7 +1,7 @@
-﻿using FFXIVClientStructs.FFXIV.Client.System.Framework;
+﻿using DrahsidLib;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ImGuiNET;
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using static TargetLines.ClassJobHelper;
 
@@ -221,10 +221,10 @@ internal class TargetLine
     private void UpdateMidPosition() {
         MidPosition = (Position + TargetPosition) * 0.5f;
 
-        if (ThisObject.IsPlayerCharacter()) {
+        if (ThisObject.IsPlayerCharacter) {
             MidPosition.Y += Globals.Config.saved.PlayerHeightBump;
         }
-        else if (ThisObject.IsBattleChara()) {
+        else if (ThisObject.IsBattleChara) {
             MidPosition.Y += Globals.Config.saved.EnemyHeightBump;
         }
 
@@ -248,9 +248,9 @@ internal class TargetLine
 
     private void UpdateStateNewTarget() {
         Vector3 start = ThisObject.Position;
-        Vector3 end = ThisObject.Target.Position;
-        float start_height = ThisObject.GetHeight();
-        float end_height = ThisObject.Target.GetHeight();
+        Vector3 end = ThisObject.TargetObject.Position;
+        float start_height = ThisObject.CursorHeight;
+        float end_height = ThisObject.TargetObject.CursorHeight;
         float mid_height = (start_height + end_height) * 0.5f;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
@@ -262,12 +262,12 @@ internal class TargetLine
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = ThisObject.Target.ObjectId;
+            LastTargetId = ThisObject.TargetObject.ObjectId;
         }
 
         Position = start;
         TargetPosition = Vector3.Lerp(start, end, alpha);
-        LastTargetPosition2 = Vector3.Lerp(ThisObject.Position, ThisObject.Target.Position, alpha);
+        LastTargetPosition2 = Vector3.Lerp(ThisObject.Position, ThisObject.TargetObject.Position, alpha);
     }
 
     private void UpdateStateDying_Anim(float mid_height) {
@@ -289,7 +289,7 @@ internal class TargetLine
     private void UpdateStateDying() {
         Vector3 start = ThisObject.Position;
         Vector3 end = LastTargetPosition;
-        float start_height = ThisObject.GetHeight();
+        float start_height = ThisObject.CursorHeight;
         float end_height = LastTargetHeight;
         float mid_height = (start_height + end_height) * 0.5f;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NoTargetFadeTime));
@@ -310,11 +310,11 @@ internal class TargetLine
 
     private void UpdateStateSwitching() {
         Vector3 start = LastTargetPosition;
-        Vector3 end = ThisObject.Target.Position;
-        float start_height = ThisObject.GetHeight();
-        float end_height = ThisObject.Target.GetHeight();
+        Vector3 end = ThisObject.TargetObject.Position;
+        float start_height = ThisObject.CursorHeight;
+        float end_height = ThisObject.TargetObject.CursorHeight;
         float mid_height = (start_height + end_height) * 0.5f;
-        Vector3 target_position = ThisObject.Target.Position;
+        Vector3 target_position = ThisObject.TargetObject.Position;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
         start.Y += LastTargetHeight * Globals.Config.saved.HeightScale;
@@ -322,7 +322,7 @@ internal class TargetLine
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = ThisObject.Target.ObjectId;
+            LastTargetId = ThisObject.TargetObject.ObjectId;
         }
 
         Position = ThisObject.Position;
@@ -334,8 +334,8 @@ internal class TargetLine
     }
 
     private void UpdateStateIdle() {
-        float start_height = ThisObject.GetHeight();
-        float end_height = ThisObject.Target.GetHeight();
+        float start_height = ThisObject.CursorHeight;
+        float end_height = ThisObject.TargetObject.CursorHeight;
         float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
         float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
         float mid_height = (start_height + end_height) * 0.5f;
@@ -345,7 +345,7 @@ internal class TargetLine
 
         Position = ThisObject.Position;
 
-        TargetPosition = ThisObject.Target.Position;
+        TargetPosition = ThisObject.TargetObject.Position;
         LastTargetPosition = TargetPosition;
         LastTargetPosition2 = LastTargetPosition;
 
@@ -354,7 +354,7 @@ internal class TargetLine
     }
 
     private unsafe void UpdateState() {
-        GameObjectHelper target = ThisObject.Target;
+        GameObjectHelper target = (GameObjectHelper)ThisObject.TargetObject;
         bool has_target = target != null;
         bool new_target = false;
 
@@ -421,7 +421,7 @@ internal class TargetLine
     }
 
     private void UpdateColors() {
-        GameObjectHelper target = ThisObject.Target;
+        GameObjectHelper target = (GameObjectHelper)ThisObject.TargetObject;
         float alpha = 1.0f;
 
         if (Globals.Config.saved.LineColor.Visible) {
@@ -469,7 +469,7 @@ internal class TargetLine
     }
 
     private bool UpdateVisibility() {
-        GameObjectHelper target = ThisObject.Target;
+        GameObjectHelper target = (GameObjectHelper)ThisObject.TargetObject;
         bool occlusion = Globals.Config.saved.OcclusionCulling;
 
 #if (!PROBABLY_BAD)
@@ -488,9 +488,9 @@ internal class TargetLine
             vis1 = Globals.IsVisible(TargetPosition, occlusion);
         }
 
-        DrawBeginCap = Service.Gui.WorldToScreen(Position, out ScreenPos);
-        DrawEndCap = Service.Gui.WorldToScreen(TargetPosition, out TargetScreenPos);
-        DrawMid = Service.Gui.WorldToScreen(MidPosition, out MidScreenPos);
+        DrawBeginCap = Service.GameGui.WorldToScreen(Position, out ScreenPos);
+        DrawEndCap = Service.GameGui.WorldToScreen(TargetPosition, out TargetScreenPos);
+        DrawMid = Service.GameGui.WorldToScreen(MidPosition, out MidScreenPos);
 
         if (Globals.Config.saved.SolidColor == false) {
             for (int index = 0; index < Points.Length; index++) {
@@ -499,7 +499,7 @@ internal class TargetLine
                     ? EvaluateQuadratic(Position, MidPosition, TargetPosition, t)
                     : EvaluateCubic(Position, MidPosition, MidPosition, TargetPosition, t);
 
-                bool vis = Service.Gui.WorldToScreen(point, out Vector2 screenPoint);
+                bool vis = Service.GameGui.WorldToScreen(point, out Vector2 screenPoint);
                 Points[index] = new LinePoint(screenPoint, vis);
             }
         }

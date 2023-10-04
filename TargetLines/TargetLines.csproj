@@ -1,20 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
-		<LangVersion>9.0</LangVersion>
-		<Version>1.0.0.0</Version>
+        <TargetFramework>net7.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
 		<Configurations>Debug;Release;Unlocked</Configurations>
-	</PropertyGroup>
+    </PropertyGroup>
 
-	<PropertyGroup>
-		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-		<PlatformTarget>x64</PlatformTarget>
+    <PropertyGroup>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+        <PlatformTarget>x64</PlatformTarget>
+		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<Deterministic>false</Deterministic>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-	</PropertyGroup>
+    </PropertyGroup>
 
 	<ItemGroup>
     	<Content Include="Data\TargetLine.png">
@@ -32,7 +34,7 @@
   	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.11" />
+		<PackageReference Include="DalamudPackager" Version="2.1.12" />
 	</ItemGroup>
 
 	<PropertyGroup>
@@ -44,21 +46,9 @@
     	<DalamudLibPath>$(DALAMUD_HOME)/</DalamudLibPath>
   	</PropertyGroup>
   
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-	  <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
-	  <LangVersion>11.0</LangVersion>
-	</PropertyGroup>
-  
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unlocked|AnyCPU'">
-	  <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
-	  <LangVersion>11.0</LangVersion>
 	  <DefineConstants>PROBABLY_BAD</DefineConstants>
 	  <Optimize>True</Optimize>
-	</PropertyGroup>
-  
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-	  <NoWarn>1701;1702;CS0472;CA1416</NoWarn>
-	  <LangVersion>11.0</LangVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -92,6 +82,10 @@
 			<Private>false</Private>
 		</Reference>
 	</ItemGroup>
+
+	<ItemGroup>
+        <ProjectReference Include="..\DrahsidLib\DrahsidLib.csproj" />
+    </ItemGroup>
 
 	<ItemGroup>
 		<Content Include="images\icon.png">

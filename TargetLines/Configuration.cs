@@ -1,11 +1,11 @@
 ﻿using Dalamud.Configuration;
-using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
@@ -187,10 +187,8 @@ public class Configuration : IPluginConfiguration {
     #region Saved configuration values
     public SavedConfig saved = new SavedConfig();
     public List<TargetSettingsPair> LineColors;
+    public bool HideTooltips = false;
     #endregion
-
-
-    private DalamudPluginInterface PluginInterface;
 
     public void SortLineColors() {
         Globals.Config.LineColors = Globals.Config.LineColors.OrderByDescending(obj => obj.GetPairPriority()).ToList();
@@ -225,9 +223,8 @@ public class Configuration : IPluginConfiguration {
             };
     }
 
-    public void Initialize(DalamudPluginInterface pluginInterface) {
+    public void Initialize() {
         int LineColorsWasNull = 0;
-        PluginInterface = pluginInterface;
 
         // manage upgrades
         if (saved == null) {
@@ -241,7 +238,7 @@ public class Configuration : IPluginConfiguration {
 
         if (saved.OnlyInCombat is bool) {
             saved.OnlyInCombat = InCombatOption.None;
-            Globals.Chat.Print("Warning! If you had the \"OnlyInCombat\" setting set, you will have to reenable it!");
+            Service.ChatGui.Print("Warning! If you had the \"OnlyInCombat\" setting set, you will have to reenable it!");
         }
 
         if (saved.PlayerPlayerLineColor != null) {
@@ -294,6 +291,6 @@ public class Configuration : IPluginConfiguration {
     }
 
     public void Save() {
-        PluginInterface.SavePluginConfig(this);
+        Service.Interface.SavePluginConfig(this);
     }
 }
