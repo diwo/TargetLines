@@ -1,4 +1,5 @@
-﻿using DrahsidLib;
+﻿using Dalamud.Game.ClientState.Objects.Types;
+using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ImGuiNET;
 using System;
@@ -17,8 +18,7 @@ internal struct LinePoint {
     }
 }
 
-internal class TargetLine
-{
+internal class TargetLine {
     public enum LineState {
         NewTarget, // new target (from no target)
         Dying, // no target, fading away
@@ -26,7 +26,9 @@ internal class TargetLine
         Idle // being targeted
     };
 
-    public GameObjectHelper ThisObject;
+    public GameObjectHelper Self;
+    private GameObjectHelper? Target;
+
     public LineState State = LineState.NewTarget;
     public bool ShouldDelete = false;
 
@@ -46,7 +48,7 @@ internal class TargetLine
     private ABGR LastOutlineColor = new ABGR(0, 0, 0, 0);
     
     private bool UseQuad = false;
-    private bool Visible = false;
+    private bool Visible = true;
 
     private bool HadTarget = false;
     private ulong LastTargetId = 0;
@@ -68,14 +70,14 @@ internal class TargetLine
     private const float HPI = MathF.PI * 0.5f;
 
     public TargetLine(GameObjectHelper obj) {
-        ThisObject = obj;
-        if (ThisObject.TargetObject != null) {
-            LastTargetId = ThisObject.TargetObject.TargetObjectId;
-            LastTargetPosition = ThisObject.TargetObject.Position;
+        Self = obj;
+        if (Target != null) {
+            LastTargetId = Target.TargetObjectId;
+            LastTargetPosition = Target.Position;
             LastTargetPosition2 = LastTargetPosition;
         }
         else {
-            LastTargetPosition = ThisObject.Position;
+            LastTargetPosition = Self.Position;
             LastTargetPosition2 = LastTargetPosition;
         }
 
@@ -107,6 +109,13 @@ internal class TargetLine
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
         float outlineThickness = Globals.Config.saved.OutlineThickness;
         float lineThickness = Globals.Config.saved.LineThickness;
+
+#if DEBUG || UNLOCKED
+        drawlist.AddCircleFilled(ScreenPos, 5.0f, 0xFFFFFF00);
+        drawlist.AddCircleFilled(MidScreenPos, 5.0f, 0xFF00FFFF);
+        drawlist.AddCircleFilled(TargetScreenPos, 5.0f, 0xFFFF00FF);
+        drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, 0x80FFFFFF, 5.0f);
+#endif
 
         if (UseQuad) {
             if (outlineThickness > 0) {
@@ -221,10 +230,10 @@ internal class TargetLine
     private void UpdateMidPosition() {
         MidPosition = (Position + TargetPosition) * 0.5f;
 
-        if (ThisObject.IsPlayerCharacter) {
+        if (Self.IsPlayerCharacter) {
             MidPosition.Y += Globals.Config.saved.PlayerHeightBump;
         }
-        else if (ThisObject.IsBattleChara) {
+        else if (Self.IsBattleChara) {
             MidPosition.Y += Globals.Config.saved.EnemyHeightBump;
         }
 
@@ -247,10 +256,10 @@ internal class TargetLine
 
 
     private void UpdateStateNewTarget() {
-        Vector3 start = ThisObject.Position;
-        Vector3 end = ThisObject.TargetObject.Position;
-        float start_height = ThisObject.CursorHeight;
-        float end_height = ThisObject.TargetObject.CursorHeight;
+        Vector3 start = Self.Position;
+        Vector3 end = Target.Position;
+        float start_height = Self.CursorHeight;
+        float end_height = Target.CursorHeight;
         float mid_height = (start_height + end_height) * 0.5f;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
@@ -262,12 +271,12 @@ internal class TargetLine
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = ThisObject.TargetObject.ObjectId;
+            LastTargetId = Target.ObjectId;
         }
 
         Position = start;
         TargetPosition = Vector3.Lerp(start, end, alpha);
-        LastTargetPosition2 = Vector3.Lerp(ThisObject.Position, ThisObject.TargetObject.Position, alpha);
+        LastTargetPosition2 = Vector3.Lerp(Self.Position, Target.Position, alpha);
     }
 
     private void UpdateStateDying_Anim(float mid_height) {
@@ -287,9 +296,9 @@ internal class TargetLine
     }
 
     private void UpdateStateDying() {
-        Vector3 start = ThisObject.Position;
+        Vector3 start = Self.Position;
         Vector3 end = LastTargetPosition;
-        float start_height = ThisObject.CursorHeight;
+        float start_height = Self.CursorHeight;
         float end_height = LastTargetHeight;
         float mid_height = (start_height + end_height) * 0.5f;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NoTargetFadeTime));
@@ -305,16 +314,16 @@ internal class TargetLine
 
         Position = start;
         TargetPosition = Vector3.Lerp(end, start, alpha);
-        LastTargetPosition2 = Vector3.Lerp(ThisObject.Position, LastTargetPosition, alpha);
+        LastTargetPosition2 = Vector3.Lerp(Self.Position, LastTargetPosition, alpha);
     }
 
     private void UpdateStateSwitching() {
         Vector3 start = LastTargetPosition;
-        Vector3 end = ThisObject.TargetObject.Position;
-        float start_height = ThisObject.CursorHeight;
-        float end_height = ThisObject.TargetObject.CursorHeight;
+        Vector3 end = Target.Position;
+        float start_height = Self.CursorHeight;
+        float end_height = Target.CursorHeight;
         float mid_height = (start_height + end_height) * 0.5f;
-        Vector3 target_position = ThisObject.TargetObject.Position;
+        Vector3 target_position = Target.Position;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
         start.Y += LastTargetHeight * Globals.Config.saved.HeightScale;
@@ -322,10 +331,10 @@ internal class TargetLine
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = ThisObject.TargetObject.ObjectId;
+            LastTargetId = Target.ObjectId;
         }
 
-        Position = ThisObject.Position;
+        Position = Self.Position;
         Position.Y += start_height * Globals.Config.saved.HeightScale;
 
         TargetPosition = Vector3.Lerp(start, end, alpha);
@@ -334,8 +343,8 @@ internal class TargetLine
     }
 
     private void UpdateStateIdle() {
-        float start_height = ThisObject.CursorHeight;
-        float end_height = ThisObject.TargetObject.CursorHeight;
+        float start_height = Self.CursorHeight;
+        float end_height = Target.CursorHeight;
         float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
         float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
         float mid_height = (start_height + end_height) * 0.5f;
@@ -343,9 +352,9 @@ internal class TargetLine
         LastTargetHeight = end_height;
         MidHeight = mid_height;
 
-        Position = ThisObject.Position;
+        Position = Self.Position;
 
-        TargetPosition = ThisObject.TargetObject.Position;
+        TargetPosition = Target.Position;
         LastTargetPosition = TargetPosition;
         LastTargetPosition2 = LastTargetPosition;
 
@@ -354,8 +363,7 @@ internal class TargetLine
     }
 
     private unsafe void UpdateState() {
-        GameObjectHelper target = (GameObjectHelper)ThisObject.TargetObject;
-        bool has_target = target != null;
+        bool has_target = Target != null;
         bool new_target = false;
 
         if (Framework == null) {
@@ -368,7 +376,7 @@ internal class TargetLine
                     LastTargetPosition = LastTargetPosition2;
                 }
 
-                LastTargetId = target.ObjectId;
+                LastTargetId = Target.ObjectId;
                 State = LineState.NewTarget;
                 StateTime = 0;
             }
@@ -383,8 +391,8 @@ internal class TargetLine
         }
 
         if (has_target && HadTarget) {
-            if (target.ObjectId != LastTargetId) {
-                LastTargetId = target.ObjectId;
+            if (Target.ObjectId != LastTargetId) {
+                LastTargetId = Target.ObjectId;
                 new_target = true;
             }
 
@@ -421,7 +429,6 @@ internal class TargetLine
     }
 
     private void UpdateColors() {
-        GameObjectHelper target = (GameObjectHelper)ThisObject.TargetObject;
         float alpha = 1.0f;
 
         if (Globals.Config.saved.LineColor.Visible) {
@@ -429,7 +436,7 @@ internal class TargetLine
             OutlineColor.CopyValues(Globals.Config.saved.LineColor.OutlineColor);
         }
 
-        if (target == null) {
+        if (Target == null) {
             LineColor.CopyValues(LastLineColor);
             OutlineColor.CopyValues(LastOutlineColor);
         }
@@ -440,9 +447,9 @@ internal class TargetLine
             foreach (TargetSettingsPair settings in Globals.Config.LineColors) {
                 int priority = settings.GetPairPriority();
                 if (priority > highestPriority) {
-                    bool should_copy = CompareTargetSettings(ref settings.From, ref ThisObject.Settings);
+                    bool should_copy = CompareTargetSettings(ref settings.From, ref Self.Settings);
                     if (should_copy) {
-                        should_copy = CompareTargetSettings(ref settings.To, ref target.Settings);
+                        should_copy = CompareTargetSettings(ref settings.To, ref Target.Settings);
                     }
                     if (should_copy) {
                         highestPriority = priority;
@@ -469,7 +476,6 @@ internal class TargetLine
     }
 
     private bool UpdateVisibility() {
-        GameObjectHelper target = (GameObjectHelper)ThisObject.TargetObject;
         bool occlusion = Globals.Config.saved.OcclusionCulling;
 
 #if (!PROBABLY_BAD)
@@ -478,11 +484,11 @@ internal class TargetLine
         }
 #endif
 
-        bool vis0 = ThisObject.IsVisible(occlusion);
+        bool vis0 = Self.IsVisible(occlusion);
         bool vis1 = false;
 
-        if (target != null) {
-            vis1 = target.IsVisible(occlusion);
+        if (Target != null) {
+            vis1 = Target.IsVisible(occlusion);
         }
         else {
             vis1 = Globals.IsVisible(TargetPosition, occlusion);
@@ -526,10 +532,18 @@ internal class TargetLine
     }
 
     public unsafe void Draw() {
-        ThisObject.UpdateTargetSettings();
+        GameObject? _target = Service.ObjectTable.SearchById(Self.TargetObjectId);
+        if (_target != null) {
+            Target = new GameObjectHelper(_target.Address);
+        }
+        else {
+            Target = null;
+        }
+
+        Self.UpdateTargetSettings();
         UpdateState();
         UpdateColors();
-        
+
         if (!UpdateVisibility()) {
             return;
         }

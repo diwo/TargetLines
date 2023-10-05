@@ -3,6 +3,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Common.Math;
+using System;
 using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
@@ -11,6 +12,10 @@ internal unsafe class GameObjectHelper : GameObjectWrapper {
     public TargetSettings Settings = new TargetSettings();
 
     public GameObjectHelper(GameObject obj) : base(obj) {
+        UpdateTargetSettings();
+    }
+
+    public GameObjectHelper(IntPtr address) : base(address) {
         UpdateTargetSettings();
     }
 
