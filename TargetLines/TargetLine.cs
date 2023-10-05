@@ -110,12 +110,14 @@ internal class TargetLine {
         float outlineThickness = Globals.Config.saved.OutlineThickness;
         float lineThickness = Globals.Config.saved.LineThickness;
 
+/*
 #if DEBUG || UNLOCKED
         drawlist.AddCircleFilled(ScreenPos, 5.0f, 0xFFFFFF00);
         drawlist.AddCircleFilled(MidScreenPos, 5.0f, 0xFF00FFFF);
         drawlist.AddCircleFilled(TargetScreenPos, 5.0f, 0xFFFF00FF);
         drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, 0x80FFFFFF, 5.0f);
 #endif
+*/
 
         if (UseQuad) {
             if (outlineThickness > 0) {
