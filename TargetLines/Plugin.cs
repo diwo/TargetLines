@@ -99,41 +99,29 @@ public class Plugin : IDalamudPlugin {
                 }
             }
 
-
-            if (obj.TargetObject == null) {
-                /*if (obj.TargetObjectId != 0) {
-                    var tobj = Service.ObjectTable.SearchById(obj.TargetObjectId);
-                    if (tobj != null) {
-                        Service.Logger.Info($"{obj.ObjectId}: TargetObject is null, however, {obj.TargetObjectId} exists!");
-                    }
-                    else
-                    {
-                        Service.Logger.Info($"{obj.ObjectId}: TargetObject is null, {obj.TargetObjectId} is bogus!");
-                    }
-                }*/
+            bool has_target = obj.TargetObject != null;
+            if (!obj.IsValid()) {
                 continue;
             }
 
-            if (!obj.IsValid() || !obj.TargetObject.IsValid()) {
-                //Service.Logger.Info("Validity");
-                continue;
-            }
-
-            // testing
-            GameObjectHelper gobj = new GameObjectHelper(obj);
 #if !PROBABLY_BAD
-            if (!obj.IsTargetable || !gobj.TargetIsTargetable()) {
-                //Service.Logger.Info("Targetable");
+            if (!obj.IsTargetable) {
+                continue;
+            }
+
+            if (has_target && !obj.TargetIsTargetable()) {
                 continue;
             }
 #endif
 
-            if (targetLine == null) {
-                targetLine = new TargetLine(gobj);
+            if (targetLine == null && has_target) {
+                targetLine = new TargetLine(obj);
                 TargetLineDict.Add(id, targetLine);
             }
 
-            targetLine.Draw();
+            if (targetLine != null) {
+                targetLine.Draw();
+            }
         }
     }
 

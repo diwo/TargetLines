@@ -25,8 +25,7 @@ internal class TargetLine {
         Idle // being targeted
     };
 
-    public GameObjectHelper Self;
-    private GameObjectHelper? Target;
+    public GameObject Self;
 
     public LineState State = LineState.NewTarget;
     public bool ShouldDelete = false;
@@ -49,6 +48,7 @@ internal class TargetLine {
     private bool UseQuad = false;
     private bool Visible = true;
 
+    private bool HasTarget = false;
     private bool HadTarget = false;
     private ulong LastTargetId = 0;
 
@@ -66,11 +66,11 @@ internal class TargetLine {
 
     private const float HPI = MathF.PI * 0.5f;
 
-    public TargetLine(GameObjectHelper obj) {
+    public TargetLine(GameObject obj) {
         Self = obj;
-        if (Target != null) {
-            LastTargetId = Target.TargetObjectId;
-            LastTargetPosition = Target.Position;
+        if (Self.TargetObject != null) {
+            LastTargetId = Self.TargetObject.TargetObjectId;
+            LastTargetPosition = Self.TargetObject.Position;
             LastTargetPosition2 = LastTargetPosition;
         }
         else {
@@ -106,15 +106,6 @@ internal class TargetLine {
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
         float outlineThickness = Globals.Config.saved.OutlineThickness;
         float lineThickness = Globals.Config.saved.LineThickness;
-
-/*
-#if DEBUG || UNLOCKED
-        drawlist.AddCircleFilled(ScreenPos, 5.0f, 0xFFFFFF00);
-        drawlist.AddCircleFilled(MidScreenPos, 5.0f, 0xFF00FFFF);
-        drawlist.AddCircleFilled(TargetScreenPos, 5.0f, 0xFFFF00FF);
-        drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, 0x80FFFFFF, 5.0f);
-#endif
-*/
 
         if (UseQuad) {
             if (outlineThickness > 0) {
@@ -229,10 +220,10 @@ internal class TargetLine {
     private void UpdateMidPosition() {
         MidPosition = (Position + TargetPosition) * 0.5f;
 
-        if (Self.IsPlayerCharacter) {
+        if (Self.GetIsPlayerCharacter()) {
             MidPosition.Y += Globals.Config.saved.PlayerHeightBump;
         }
-        else if (Self.IsBattleChara) {
+        else if (Self.GetIsBattleChara()) {
             MidPosition.Y += Globals.Config.saved.EnemyHeightBump;
         }
 
@@ -256,9 +247,9 @@ internal class TargetLine {
 
     private void UpdateStateNewTarget() {
         Vector3 start = Self.Position;
-        Vector3 end = Target.Position;
-        float start_height = Self.CursorHeight;
-        float end_height = Target.CursorHeight;
+        Vector3 end = Self.TargetObject.Position;
+        float start_height = Self.GetCursorHeight();
+        float end_height = Self.TargetObject.GetCursorHeight();
         float mid_height = (start_height + end_height) * 0.5f;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
@@ -270,12 +261,12 @@ internal class TargetLine {
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = Target.ObjectId;
+            LastTargetId = Self.TargetObject.ObjectId;
         }
 
         Position = start;
         TargetPosition = Vector3.Lerp(start, end, alpha);
-        LastTargetPosition2 = Vector3.Lerp(Self.Position, Target.Position, alpha);
+        LastTargetPosition2 = Vector3.Lerp(Self.Position, Self.TargetObject.Position, alpha);
     }
 
     private void UpdateStateDying_Anim(float mid_height) {
@@ -297,7 +288,7 @@ internal class TargetLine {
     private void UpdateStateDying() {
         Vector3 start = Self.Position;
         Vector3 end = LastTargetPosition;
-        float start_height = Self.CursorHeight;
+        float start_height = Self.GetCursorHeight();
         float end_height = LastTargetHeight;
         float mid_height = (start_height + end_height) * 0.5f;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NoTargetFadeTime));
@@ -318,11 +309,11 @@ internal class TargetLine {
 
     private void UpdateStateSwitching() {
         Vector3 start = LastTargetPosition;
-        Vector3 end = Target.Position;
-        float start_height = Self.CursorHeight;
-        float end_height = Target.CursorHeight;
+        Vector3 end = Self.TargetObject.Position;
+        float start_height = Self.GetCursorHeight();
+        float end_height = Self.TargetObject.GetCursorHeight();
         float mid_height = (start_height + end_height) * 0.5f;
-        Vector3 target_position = Target.Position;
+        Vector3 target_position = Self.TargetObject.Position;
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
         start.Y += LastTargetHeight * Globals.Config.saved.HeightScale;
@@ -330,7 +321,7 @@ internal class TargetLine {
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = Target.ObjectId;
+            LastTargetId = Self.TargetObject.ObjectId;
         }
 
         Position = Self.Position;
@@ -342,8 +333,8 @@ internal class TargetLine {
     }
 
     private void UpdateStateIdle() {
-        float start_height = Self.CursorHeight;
-        float end_height = Target.CursorHeight;
+        float start_height = Self.GetCursorHeight();
+        float end_height = Self.TargetObject.GetCursorHeight();
         float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
         float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
         float mid_height = (start_height + end_height) * 0.5f;
@@ -353,7 +344,7 @@ internal class TargetLine {
 
         Position = Self.Position;
 
-        TargetPosition = Target.Position;
+        TargetPosition = Self.TargetObject.Position;
         LastTargetPosition = TargetPosition;
         LastTargetPosition2 = LastTargetPosition;
 
@@ -362,16 +353,15 @@ internal class TargetLine {
     }
 
     private unsafe void UpdateState() {
-        bool has_target = Target != null;
         bool new_target = false;
 
-        if (has_target != HadTarget) {
-            if (has_target) {
+        if (HasTarget != HadTarget) {
+            if (HasTarget) {
                 if (State == LineState.Dying) {
                     LastTargetPosition = LastTargetPosition2;
                 }
 
-                LastTargetId = Target.ObjectId;
+                LastTargetId = Self.TargetObject.ObjectId;
                 State = LineState.NewTarget;
                 StateTime = 0;
             }
@@ -385,9 +375,9 @@ internal class TargetLine {
             }
         }
 
-        if (has_target && HadTarget) {
-            if (Target.ObjectId != LastTargetId) {
-                LastTargetId = Target.ObjectId;
+        if (HasTarget && HadTarget) {
+            if (Self.TargetObject.ObjectId != LastTargetId) {
+                LastTargetId = Self.TargetObject.ObjectId;
                 new_target = true;
             }
 
@@ -420,7 +410,7 @@ internal class TargetLine {
         UpdateMidPosition();
 
         StateTime += Globals.Framework->FrameDeltaTime;
-        HadTarget = has_target;
+        HadTarget = HasTarget;
     }
 
     private void UpdateColors() {
@@ -431,7 +421,7 @@ internal class TargetLine {
             OutlineColor.CopyValues(Globals.Config.saved.LineColor.OutlineColor);
         }
 
-        if (Target == null) {
+        if (Self.TargetObject == null) {
             LineColor.CopyValues(LastLineColor);
             OutlineColor.CopyValues(LastOutlineColor);
         }
@@ -442,9 +432,12 @@ internal class TargetLine {
             foreach (TargetSettingsPair settings in Globals.Config.LineColors) {
                 int priority = settings.GetPairPriority();
                 if (priority > highestPriority) {
-                    bool should_copy = CompareTargetSettings(ref settings.From, ref Self.Settings);
+                    TargetSettings SelfSettings = Self.GetTargetSettings();
+                    TargetSettings TargSettings = Self.TargetObject.GetTargetSettings();
+
+                    bool should_copy = CompareTargetSettings(ref settings.From, ref SelfSettings);
                     if (should_copy) {
-                        should_copy = CompareTargetSettings(ref settings.To, ref Target.Settings);
+                        should_copy = CompareTargetSettings(ref settings.To, ref TargSettings);
                     }
                     if (should_copy) {
                         highestPriority = priority;
@@ -474,7 +467,7 @@ internal class TargetLine {
         bool occlusion = Globals.Config.saved.OcclusionCulling;
 
 #if (!PROBABLY_BAD)
-        if (Self.IsBattleNPC) {
+        if (Self.GetIsBattleNPC()) {
             occlusion = true;
         }
 #endif
@@ -482,8 +475,8 @@ internal class TargetLine {
         bool vis0 = Self.IsVisible(occlusion);
         bool vis1 = false;
 
-        if (Target != null) {
-            vis1 = Target.IsVisible(occlusion);
+        if (HasTarget) {
+            vis1 = Self.TargetObject.IsVisible(occlusion);
         }
         else {
             vis1 = Globals.IsVisible(TargetPosition, occlusion);
@@ -527,15 +520,7 @@ internal class TargetLine {
     }
 
     public unsafe void Draw() {
-        GameObject? _target = Service.ObjectTable.SearchById(Self.TargetObjectId);
-        if (_target != null) {
-            Target = new GameObjectHelper(_target.Address);
-        }
-        else {
-            Target = null;
-        }
-
-        Self.UpdateTargetSettings();
+        HasTarget = Self.TargetObject != null;
         UpdateState();
         UpdateColors();
 
