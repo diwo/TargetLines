@@ -1,6 +1,5 @@
 ﻿using Dalamud.Game.ClientState.Objects.Types;
 using DrahsidLib;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ImGuiNET;
 using System;
 using System.Numerics;
@@ -61,8 +60,6 @@ internal class TargetLine {
     private float MidHeight = 0.0f;
     private float LastMidHeight = 0.0f;
     private float LastTargetHeight = 0.0f;
-
-    private unsafe Framework* Framework = null;
 
     private LinePoint[] Points;
     private float LinePointStep;
@@ -368,10 +365,6 @@ internal class TargetLine {
         bool has_target = Target != null;
         bool new_target = false;
 
-        if (Framework == null) {
-            Framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
-        }
-
         if (has_target != HadTarget) {
             if (has_target) {
                 if (State == LineState.Dying) {
@@ -426,7 +419,7 @@ internal class TargetLine {
 
         UpdateMidPosition();
 
-        StateTime += Framework->FrameDeltaTime;
+        StateTime += Globals.Framework->FrameDeltaTime;
         HadTarget = has_target;
     }
 
@@ -481,7 +474,7 @@ internal class TargetLine {
         bool occlusion = Globals.Config.saved.OcclusionCulling;
 
 #if (!PROBABLY_BAD)
-        if (ThisObject.IsBattleNPC()) {
+        if (Self.IsBattleNPC) {
             occlusion = true;
         }
 #endif
