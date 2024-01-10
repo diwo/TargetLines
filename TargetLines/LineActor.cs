@@ -81,12 +81,12 @@ internal class LineActor {
         layout = new InputLayout(
             device,
             ShaderSingleton.GetVertexShaderBytecode(ShaderSingleton.Shader.Line).Data,
-            [
+            new InputElement[] {
                 new InputElement("POSITION", 0, Format.R32G32B32A32_Float, 0),
                 new InputElement("COLOR", 0,    Format.R32G32B32A32_Float, Utilities.SizeOf<Vector4>(), 0),
                 new InputElement("START", 0,    Format.R32G32_Float, Utilities.SizeOf<Vector4>() + Utilities.SizeOf<Color4>(), 0),
                 new InputElement("DIR", 0,      Format.R32G32_Float, Utilities.SizeOf<Vector4>() + Utilities.SizeOf<Color4>() + Utilities.SizeOf<Vector2>(), 0),
-            ]
+            }
         );
 
         if (SwapChainHook.Renderer != null) {
