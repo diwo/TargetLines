@@ -7,6 +7,7 @@ using Dalamud.Game.ClientState.Conditions;
 using System.IO;
 using Dalamud.Plugin.Services;
 using DrahsidLib;
+using System.Numerics;
 
 namespace TargetLines;
 
@@ -49,6 +50,22 @@ public class Plugin : IDalamudPlugin {
         Globals.LineTexture = PluginInterface.UiBuilder.LoadImage(texture_line_path);
         Globals.OutlineTexture = PluginInterface.UiBuilder.LoadImage(texture_outline_path);
         Globals.EdgeTexture = PluginInterface.UiBuilder.LoadImage(texture_edge_path);
+
+        if (Globals.Config.saved.DebugDXLines) {
+            try {
+                SwapChainResolver.Setup();
+            }
+            catch (Exception ex) {
+                Service.Logger.Error(ex.Message);
+            }
+
+            try {
+                SwapChainHook.Setup();
+            }
+            catch (Exception ex) {
+                Service.Logger.Error(ex.Message);
+            }
+        }
     }
 
     public static void DrawTooltip(string text) {
@@ -74,6 +91,13 @@ public class Plugin : IDalamudPlugin {
 
     private unsafe void DrawOverlay() {
         Globals.Runtime += Globals.Framework->FrameDeltaTime;
+
+        if (Globals.Config.saved.DebugDXLines && ShaderSingleton.Initialized) {
+            Service.GameGui.WorldToScreen(new Vector3(-1.0f, 0.1f, 5.0f), out Vector2 source);
+            Service.GameGui.WorldToScreen(new Vector3(1.0f, 0.1f, 5.0f), out Vector2 dest);
+            ImGui.GetWindowDrawList().AddCircleFilled(source, 9, 0xFF00FF00);
+            ImGui.GetWindowDrawList().AddCircleFilled(dest, 7, 0xFF0000FF);
+        }
 
         if (Service.ClientState.LocalPlayer == null && TargetLineDict.Count > 0 || Service.ClientState.IsPvP) {
             TargetLineDict.Clear();
@@ -125,8 +149,19 @@ public class Plugin : IDalamudPlugin {
         }
     }
 
+    private LineActor? testLine = null;
+
     private void OnDraw() {
         Windows.System.Draw();
+
+        if (Globals.Config.saved.DebugDXLines) {
+            if (ShaderSingleton.Initialized && testLine == null) {
+                testLine = new LineActor(SwapChainHook.Scene.Device, SwapChainHook.Scene.SwapChain);
+                testLine.Source = new SharpDX.Vector3(-1.0f, 0.1f, 5.0f);
+                testLine.Destination = new SharpDX.Vector3(1.0f, 0.1f, 5.0f);
+                Service.Logger.Warning("TEST TEST");
+            }
+        }
 
         bool combat_flag = Service.Condition[ConditionFlag.InCombat];
         bool runOverlay = !Globals.Config.saved.OnlyUnsheathed || (Globals.Config.saved.OnlyUnsheathed && (Service.ClientState.LocalPlayer.StatusFlags & Dalamud.Game.ClientState.Objects.Enums.StatusFlags.WeaponOut) != 0);
@@ -167,6 +202,7 @@ public class Plugin : IDalamudPlugin {
         Globals.LineTexture.Dispose();
         Globals.OutlineTexture.Dispose();
         Globals.EdgeTexture.Dispose();
+        SwapChainHook.Dispose();
     }
 
     public void Dispose() {

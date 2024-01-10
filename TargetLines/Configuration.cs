@@ -159,6 +159,8 @@ public class SavedConfig {
     public float FadeToEndScalar = 0.2f;
     public float HeightScale = 1.0f;
     public int TextureCurveSampleCount = 47;
+    public int TextureCurveSampleCountMin = 7;
+    public int TextureCurveSampleCountMax = 47;
     public InCombatOption OnlyInCombat = InCombatOption.None;
     public bool OnlyUnsheathed = false;
     public bool SolidColor = false;
@@ -168,6 +170,16 @@ public class SavedConfig {
     public bool PulsingEffect = true;
     public bool BreathingEffect = true;
     public bool CompactFlagDisplay = false;
+    public bool UIOcclusion = true;
+    public bool DynamicSampleCount = true;
+
+    public bool DebugDynamicSampleCount = false;
+    public bool DebugUICollision = false;
+    public bool DebugDXLines = false;
+
+#if HELLOTRI_TEST
+    public bool HelloTriTest = false;
+#endif
     public LineColor LineColor = new LineColor(new ABGR(0xC0, 0x80, 0x80, 0x80), new ABGR(0x80, 0x00, 0x00, 0x00), true); // fallback color
     public LineDeathAnimation DeathAnimation = LineDeathAnimation.Linear;
     public float DeathAnimationTimeScale = 1.0f;

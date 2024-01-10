@@ -4,7 +4,6 @@ using Dalamud.Game.ClientState.Objects.Types;
 using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using System;
 using System.Runtime.InteropServices;
 using static TargetLines.ClassJobHelper;
 

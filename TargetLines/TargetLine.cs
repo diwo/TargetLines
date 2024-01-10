@@ -66,6 +66,14 @@ internal class TargetLine {
 
     private const float HPI = MathF.PI * 0.5f;
 
+    private readonly Vector2 uv1 = new Vector2(0, 0);
+    private readonly Vector2 uv2 = new Vector2(0, 1.0f);
+    private readonly Vector2 uv3 = new Vector2(1.0f, 1.0f);
+    private readonly Vector2 uv4 = new Vector2(1.0f, 0);
+
+    ABGR tempLineColor = new ABGR(0, 0, 0, 0);
+    ABGR tempOutlineColor = new ABGR(0, 0, 0, 0);
+
     public TargetLine(GameObject obj) {
         Self = obj;
         if (Self.TargetObject != null) {
@@ -78,16 +86,30 @@ internal class TargetLine {
             LastTargetPosition2 = LastTargetPosition;
         }
 
+        InitializeLinePoints();
+    }
+
+    private void InitializeLinePoints(int sampleCount = 0) {
         Points = new LinePoint[Globals.Config.saved.TextureCurveSampleCount];
+        Points = new LinePoint[sampleCount];
         LinePointStep = 1.0f / (float)(Points.Length - 1);
     }
 
-    Vector3 EvaluateCubic(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t) {
+    private Vector3 EvaluateCubic(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t) {
+        if (t == 0) {
+            return p0;
+        }
+
+        if (t == 1) {
+            return p3;
+        }
+
         float t2 = t * t;
         float t3 = t2 * t;
         float mt = 1 - t;
         float mt2 = mt * mt;
         float mt3 = mt2 * mt;
+
         Vector3 point =
             mt3 * p0 +
             3 * mt2 * t * p1 +
@@ -96,9 +118,20 @@ internal class TargetLine {
         return point;
     }
 
-    Vector3 EvaluateQuadratic(Vector3 p0, Vector3 p1, Vector3 p2, float t) {
+    private Vector3 EvaluateQuadratic(Vector3 p0, Vector3 p1, Vector3 p2, float t) {
         float mt = 1 - t;
-        Vector3 point = mt * mt * p0 + 2 * mt * t * p1 + t * t * p2;
+
+        if (t == 0) {
+            return p0;
+        }
+
+        if (t == 1) {
+            return p2;
+        }
+
+        Vector3 point = mt * mt * p0
+            + 2 * mt * t * p1
+            + t * t * p2;
         return point;
     }
 
@@ -125,10 +158,8 @@ internal class TargetLine {
         }
     }
 
-    private void DrawFancyLine() {
+    private unsafe void DrawFancyLine() {
         ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
-        Vector2 uv1 = new Vector2(0, 0);
-        Vector2 uv2 = new Vector2(1.0f, 1.0f);
         int sampleCount = Points.Length;
 
         float currentTime = (float)Globals.Runtime;
@@ -141,6 +172,10 @@ internal class TargetLine {
         bool shouldFadeToEnd = Globals.Config.saved.FadeToEnd;
         float lineThickness = Globals.Config.saved.LineThickness * 2.0f;
         float outlineThickness = Globals.Config.saved.OutlineThickness * 2.0f;
+
+        bool segmentOccluded;
+        bool firstSegmentOccluded = false;
+        bool lastSegmentOccluded = false;
 
         for (int index = 0; index < sampleCount - 1; index++) {
             LinePoint point = Points[index];
@@ -184,12 +219,23 @@ internal class TargetLine {
                 outlinecolor_index.a = (byte)alphaFade;
             }
 
-            if (linecolor_index.a != 0 && lineThickness != 0) {
-                drawlist.AddImageQuad(Globals.LineTexture.ImGuiHandle, p1_perp_inv, p2_perp_inv, p2_perp, p1_perp, uv1, new Vector2(uv1.X, uv2.Y), uv2, new Vector2(uv2.X, uv1.Y), linecolor_index.GetRaw());
+            segmentOccluded = linecolor_index.a == 0 || lineThickness == 0;
+            if (Globals.Config.saved.UIOcclusion && !segmentOccluded) {
+                segmentOccluded = UICollision.OcclusionCheck(p1_perp_inv, p2_perp_inv, p2_perp, p1_perp);
+                if (index == 0) {
+                    firstSegmentOccluded = segmentOccluded;
+                }
+                if (index == sampleCount - 2) {
+                    lastSegmentOccluded = segmentOccluded;
+                }
             }
 
-            if (outlinecolor_index.a != 0 && outlineThickness != 0) {
-                drawlist.AddImageQuad(Globals.OutlineTexture.ImGuiHandle, p1_perp_invo, p2_perp_invo, p2_perpo, p1_perpo, uv1, new Vector2(uv1.X, uv2.Y), uv2, new Vector2(uv2.X, uv1.Y), outlinecolor_index.GetRaw());
+            if (!segmentOccluded) {
+                drawlist.AddImageQuad(Globals.LineTexture.ImGuiHandle, p1_perp_inv, p2_perp_inv, p2_perp, p1_perp, uv1, uv2, uv3, uv4, linecolor_index.GetRaw());
+
+                if (outlinecolor_index.a != 0 && outlineThickness != 0) {
+                    drawlist.AddImageQuad(Globals.OutlineTexture.ImGuiHandle, p1_perp_invo, p2_perp_invo, p2_perpo, p1_perpo, uv1, uv2, uv3, uv4, outlinecolor_index.GetRaw());
+                }
             }
         }
 
@@ -209,11 +255,12 @@ internal class TargetLine {
             linecolor_end.a = (byte)(linecolor_end.a * Globals.Config.saved.FadeToEndScalar);
         }
 
-        if (DrawBeginCap) {
-            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, start_p1, start_p2, uv1, uv2, LineColor.GetRaw());
+        if (DrawBeginCap && !firstSegmentOccluded) {
+            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, start_p1, start_p2, uv1, uv3, LineColor.GetRaw());
         }
-        if (DrawEndCap) {
-            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, end_p1, end_p2, uv1, uv2, LineColor.GetRaw());
+
+        if (DrawEndCap && !lastSegmentOccluded) {
+            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, end_p1, end_p2, uv1, uv3, LineColor.GetRaw());
         }
     }
 
@@ -426,8 +473,6 @@ internal class TargetLine {
             OutlineColor.CopyValues(LastOutlineColor);
         }
         else {
-            ABGR tempLineColor = new ABGR(0, 0, 0, 0);
-            ABGR tempOutlineColor = new ABGR(0, 0, 0, 0);
             int highestPriority = -1;
             foreach (TargetSettingsPair settings in Globals.Config.LineColors) {
                 int priority = settings.GetPairPriority();
@@ -474,6 +519,7 @@ internal class TargetLine {
 
         bool vis0 = Self.IsVisible(occlusion);
         bool vis1 = false;
+        bool vis2 = false;
 
         if (HasTarget) {
             vis1 = Self.TargetObject.IsVisible(occlusion);
@@ -481,6 +527,8 @@ internal class TargetLine {
         else {
             vis1 = Globals.IsVisible(TargetPosition, occlusion);
         }
+
+        vis2 = Globals.IsVisible(MidPosition, occlusion);
 
         DrawBeginCap = Service.GameGui.WorldToScreen(Position, out ScreenPos);
         DrawEndCap = Service.GameGui.WorldToScreen(TargetPosition, out TargetScreenPos);
@@ -494,7 +542,8 @@ internal class TargetLine {
                     : EvaluateCubic(Position, MidPosition, MidPosition, TargetPosition, t);
 
                 bool vis = Service.GameGui.WorldToScreen(point, out Vector2 screenPoint);
-                Points[index] = new LinePoint(screenPoint, vis);
+                Points[index].Pos = screenPoint;
+                Points[index].Visible = vis;
             }
         }
 
@@ -511,15 +560,45 @@ internal class TargetLine {
                 vis1 = false;
             }
 
-            if (!(vis0 && vis1)) {
-                return false;
+            if (vis0 || vis1 || vis2) {
+                return true;
             }
+            return false;
         }
 
         return true;
     }
 
     public unsafe void Draw() {
+        int sampleCountTarget;
+
+        if (Globals.Config.saved.SolidColor == false) {
+            if (Globals.Config.saved.DynamicSampleCount) {
+                int min = Globals.Config.saved.TextureCurveSampleCountMin;
+                int max = Globals.Config.saved.TextureCurveSampleCountMax;
+                sampleCountTarget = min + ((int)MathF.Floor(1.5f + (TargetPosition - Position).Length())) * 2;
+
+                if (sampleCountTarget > max) {
+                    sampleCountTarget = max;
+                }
+
+                sampleCountTarget -= (~sampleCountTarget & 1); // make it odd so there is a peak
+            }
+            else {
+                sampleCountTarget = Globals.Config.saved.TextureCurveSampleCount;
+            }
+            if (Points.Length != sampleCountTarget) {
+                InitializeLinePoints(sampleCountTarget);
+            }
+
+            if (Globals.Config.saved.DebugDynamicSampleCount) {
+                ImDrawListPtr drawlist = ImGui.GetWindowDrawList();
+                drawlist.AddText(ScreenPos, 0xFF000000, sampleCountTarget.ToString());
+                drawlist.AddText(MidScreenPos, 0xFF00FFFF, sampleCountTarget.ToString());
+                drawlist.AddText(TargetScreenPos, 0xFFFFFFFF, sampleCountTarget.ToString());
+            }
+        }
+
         HasTarget = Self.TargetObject != null;
         UpdateState();
         UpdateColors();

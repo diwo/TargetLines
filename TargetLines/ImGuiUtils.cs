@@ -1,5 +1,4 @@
-﻿using Dalamud.Interface;
-using Dalamud.Interface.Utility;
+﻿using Dalamud.Interface.Utility;
 using ImGuiNET;
 using System;
 

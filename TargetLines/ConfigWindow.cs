@@ -9,9 +9,23 @@ using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
 
+internal enum ConfigPerformanceImpact {
+    Beneficial,
+    None,
+    Low,
+    Medium,
+    High
+}
+
 internal class ConfigWindow : WindowWrapper {
     public static string ConfigWindowName = "Target Lines Config";
     private static Vector2 MinSize = new Vector2(240, 240);
+
+    private readonly Vector4 PerformanceHighColor = new Vector4(1, 0, 0, 1);
+    private readonly Vector4 PerformanceMedColor = new Vector4(1, 1, 0, 1);
+    private readonly Vector4 PerformanceLowColor = new Vector4(1, 1, 0.5f, 0.5f);
+    private readonly Vector4 PerformanceNoneColor = new Vector4(1, 1, 1, 1);
+    private readonly Vector4 PerformanceBeneficialColor = new Vector4(0, 1, 0, 1);
 
     public ConfigWindow() : base(ConfigWindowName, MinSize) { }
 
@@ -110,7 +124,35 @@ internal class ConfigWindow : WindowWrapper {
         return should_save;
     }
 
-    public override void Draw() {
+    // returns ImGui.IsItemHovered()
+    private bool DrawPerformanceImpact(ConfigPerformanceImpact impact) {
+        Vector4 color;
+        bool ret = ImGui.IsItemHovered();
+        ImGui.SameLine();
+        switch(impact)
+        {
+            default:
+            case ConfigPerformanceImpact.None:
+                color = PerformanceNoneColor;
+                break;
+            case ConfigPerformanceImpact.Low:
+                color = PerformanceLowColor;
+                break;
+            case ConfigPerformanceImpact.Medium:
+                color = PerformanceMedColor;
+                break;
+            case ConfigPerformanceImpact.High:
+                color = PerformanceHighColor;
+                break;
+            case ConfigPerformanceImpact.Beneficial:
+                color = PerformanceBeneficialColor;
+                break;
+        }
+        ImGui.TextColored(color, $"Performance Impact: {impact}");
+        return ret;
+    }
+
+    private bool DrawFilters() {
         bool should_save = false;
 
         int selected = (int)Globals.Config.saved.OnlyInCombat;
@@ -122,116 +164,6 @@ internal class ConfigWindow : WindowWrapper {
         should_save |= ImGui.Checkbox("Only show target lines when unsheathed", ref Globals.Config.saved.OnlyUnsheathed);
         if (ImGui.IsItemHovered()) {
             ImGui.SetTooltip("If enabled, target lines will stop drawing if your weapon is sheathed");
-        }
-
-        should_save |= ImGui.Checkbox("Occlusion Culling", ref Globals.Config.saved.OcclusionCulling);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("If enabled, target lines will stop drawing if both their start and end points are not visible. Note that this is always enabled for enemies! Additionally, this has a relatively notable performance impact.");
-        }
-
-        should_save |= ImGui.Checkbox("Use solid color instead of texture", ref Globals.Config.saved.SolidColor);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("If enabled, the target lines will appear more flat, and the pulsing effect will be disabled. This is essentially a simple/clearer lines mode");
-        }
-
-        should_save |= ImGui.Checkbox("Use Breathing Effect", ref Globals.Config.saved.BreathingEffect);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("If enabled, the opacity of the lines with fade in-and-out based on the alpha values below");
-        }
-
-        if (Globals.Config.saved.SolidColor == false) {
-            should_save |= ImGui.Checkbox("Use Pulsing Effect", ref Globals.Config.saved.PulsingEffect);
-            if (ImGui.IsItemHovered()) {
-                ImGui.SetTooltip("If enabled, while not using solid color lines, the lines will periodically pulse from the source to the target");
-            }
-
-            should_save |= ImGui.Checkbox("Fade line as it approaches target", ref Globals.Config.saved.FadeToEnd);
-            if (ImGui.IsItemHovered()) {
-                ImGui.SetTooltip("If enabled, the line will become more transparent as it approaches the target");
-            }
-
-            if (Globals.Config.saved.FadeToEnd) {
-                should_save |=  ImGui.SliderFloat("End point opacity %", ref Globals.Config.saved.FadeToEndScalar, 0.0f, 1.0f);
-            }
-            if (ImGui.IsItemHovered()) {
-                ImGui.SetTooltip("The opacity of the line at the furthest point from the source");
-            }
-
-            should_save |= ImGui.SliderInt("Texture Smoothness Steps", ref Globals.Config.saved.TextureCurveSampleCount, 2, 512);
-            if (ImGui.IsItemHovered()) {
-                ImGui.SetTooltip("While not using solid color lines, this value represents how many samples are used to produce the target line effect. Lower values may have better performance");
-            }
-        }
-        else {
-            ImGui.Spacing(); ImGui.Spacing();
-        }
-
-        should_save |= ImGui.SliderFloat("Height Scale", ref Globals.Config.saved.HeightScale, 0.0f, 1.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("This value scales the height of the source and target. 0 is the feet, 1 is the head");
-        }
-
-        should_save |= ImGui.SliderFloat("Arc Scale", ref Globals.Config.saved.ArcHeightScalar, 0.0f, 2.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("This value scales middle point of the line. 0 will make the line flat, 1 will make the middle point of the line the average height of the source and target higher");
-        }
-
-        should_save |= ImGui.SliderFloat("Line Thickness", ref Globals.Config.saved.LineThickness, 0.0f, 64.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("The thickness of the line. 0 will disable the line");
-        }
-        should_save |= ImGui.SliderFloat("Outline Thickness", ref Globals.Config.saved.OutlineThickness, 0.0f, 72.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("The thickness of the outline. 0 will disable the outline");
-        }
-
-        should_save |= ImGui.SliderFloat("New Target Easing Time", ref Globals.Config.saved.NewTargetEaseTime, 0.0f, 5.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("When switching targets, this represents the time (in seconds) the line will spend shifting to the new target");
-        }
-
-        should_save |= ImGui.SliderFloat("No Target Fading Time", ref Globals.Config.saved.NoTargetFadeTime, 0.0f, 5.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("When there is no longer a target, this represents the time (in seconds) the line will spend fading out");
-        }
-
-        selected = (int)Globals.Config.saved.DeathAnimation;
-        if (ImGui.ListBox("No Target Animation", ref selected, Enum.GetNames(typeof(LineDeathAnimation)), (int)LineDeathAnimation.Count)) {
-            Globals.Config.saved.DeathAnimation = (LineDeathAnimation)selected;
-            should_save = true;
-        }
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("The formula to use for flattening the line when there is no longer a target");
-        }
-
-        should_save |= ImGui.SliderFloat("No Target Animation Time Scale", ref Globals.Config.saved.DeathAnimationTimeScale, 1.0f, 4.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("A scalar for how quickly the line flattens when there is no target. 1 means the line will be flat at the end of the animation");
-        }
-
-        should_save |= ImGui.SliderFloat("Player Arc Height Bump", ref Globals.Config.saved.PlayerHeightBump, 0.0f, 10.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("If the source of the line is a player, it's starting point will be moved up by this amount");
-        }
-
-        should_save |= ImGui.SliderFloat("Enemy Arc Height Bump", ref Globals.Config.saved.EnemyHeightBump, 0.0f, 10.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("If the source of the line is an enemy, it's starting point will be moved up by this amount");
-        }
-
-        should_save |= ImGui.SliderFloat("Alpha Fade Amplitude", ref Globals.Config.saved.WaveAmplitudeOffset, 0.0f, 0.5f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("This value represents the maximum difference that the breathing and pulsing effect will have on the opacity of the line");
-        }
-
-        should_save |= ImGui.SliderFloat("Alpha Frequency", ref Globals.Config.saved.WaveFrequencyScalar, 0.0f, 10.0f);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("This value represents the speed in which the breathing and pulsing effect will happen");
-        }
-
-        should_save |= ImGui.Checkbox("Compact Flag Display", ref Globals.Config.saved.CompactFlagDisplay);
-        if (ImGui.IsItemHovered()) {
-            ImGui.SetTooltip("If enabled, 4 flag options will be displayed per line, as opposed to 2");
         }
 
         Vector4 color = Globals.Config.saved.LineColor.Color.Color;
@@ -256,6 +188,11 @@ internal class ConfigWindow : WindowWrapper {
 
         ImGui.Spacing();
         ImGui.Separator();
+
+        should_save |= ImGui.Checkbox("Compact Flag Display", ref Globals.Config.saved.CompactFlagDisplay);
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("If enabled, 4 flag options will be displayed per line, as opposed to 2");
+        }
 
         ImGui.Text("Filter & Color settings");
         if (ImGui.Button("New")) {
@@ -370,8 +307,6 @@ internal class ConfigWindow : WindowWrapper {
         ImGui.Spacing();
         ImGui.Separator();
 
-
-
         if (ImGui.Button("Reset To Default")) {
             Globals.Config.saved = new SavedConfig();
             Globals.Config.InitializeDefaultLineColorsConfig();
@@ -395,6 +330,271 @@ internal class ConfigWindow : WindowWrapper {
         }
         if (ImGui.IsItemHovered()) {
             ImGui.SetTooltip("Paste rules from the clipboard. This overwrites your existing rules!");
+        }
+
+        return should_save;
+    }
+
+    private bool DrawVisuals() {
+        bool should_save = false;
+
+        should_save |= ImGui.Checkbox("Use Legacy Line", ref Globals.Config.saved.SolidColor);
+        if (DrawPerformanceImpact(ConfigPerformanceImpact.Beneficial)) {
+            ImGui.SetTooltip("If enabled, use the original target line effect instead of the newer fancy line effect.\nThis makes lines appear more flat. This does not support the pulsing effect, nor does it support UI collision. This also fixes the sawtooth effect of the fancy lines. This is essentially a simple/clearer lines mode.");
+        }
+
+        ImGui.Separator();
+
+        if (ImGui.TreeNode("Occlusion")) {
+            should_save |= ImGui.Checkbox("Occlusion Culling", ref Globals.Config.saved.OcclusionCulling);
+            if (DrawPerformanceImpact(ConfigPerformanceImpact.High)) {
+                ImGui.SetTooltip("If enabled, target lines will stop drawing if both their start, middle, and end points are not visible. Note that this is always enabled for enemies!");
+            }
+
+            var level = ConfigPerformanceImpact.High;
+            if (Globals.Config.saved.TextureCurveSampleCount < 32) {
+                level = ConfigPerformanceImpact.Medium;
+            }
+            else if (Globals.Config.saved.DynamicSampleCount) {
+                level = ConfigPerformanceImpact.Low;
+            }
+            if (Globals.Config.saved.SolidColor == false) {
+                should_save |= ImGui.Checkbox("UI Occlusion Culling", ref Globals.Config.saved.UIOcclusion);
+
+                if (DrawPerformanceImpact(level)) {
+                    ImGui.SetTooltip("If enabled, target lines will not draw segments which intersect with most UI elements. The performance cost of this scales with the configured smoothness steps.");
+                }
+            }
+            else {
+                ImGui.TextDisabled($" [ {(Globals.Config.saved.UIOcclusion ? 'X' : ' ')} ] UI Occlusion Culling");
+                if (DrawPerformanceImpact(level)) {
+                    ImGui.SetTooltip("Disable \"Use Legacy Line\" to configure");
+                }
+            }
+
+            ImGui.TreePop();
+        }
+        ImGui.Separator();
+
+        if (Globals.Config.saved.SolidColor == false) {
+            if (ImGui.TreeNode("Fancy Line Options")) {
+                should_save |= ImGui.Checkbox("Use Pulsing Effect", ref Globals.Config.saved.PulsingEffect);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("If enabled, while not using solid color lines, the lines will periodically pulse from the source to the target");
+                }
+
+                should_save |= ImGui.Checkbox("Fade line as it approaches target", ref Globals.Config.saved.FadeToEnd);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("If enabled, the line will become more transparent as it approaches the target");
+                }
+
+                if (Globals.Config.saved.FadeToEnd) {
+                    should_save |= ImGui.SliderFloat("End point opacity %", ref Globals.Config.saved.FadeToEndScalar, 0.0f, 1.0f);
+                }
+                else
+                {
+                    ImGui.TextDisabled(" End point opacity %");
+                }
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Enable \"Fade line as it approaches target\" to configure");
+                }
+
+                should_save |= ImGui.Checkbox("Dynamic Smoothness", ref Globals.Config.saved.DynamicSampleCount);
+                if (DrawPerformanceImpact(ConfigPerformanceImpact.Beneficial)) {
+                    ImGui.SetTooltip("When enabled, the sample count will automatically adjust based on target line distance. This may be beneficial to performance.");
+                }
+
+                if (!Globals.Config.saved.DynamicSampleCount) {
+                    should_save |= ImGui.SliderInt("Smoothness Steps", ref Globals.Config.saved.TextureCurveSampleCount, 3, 512);
+                    if (DrawPerformanceImpact(ConfigPerformanceImpact.Medium)) {
+                        ImGui.SetTooltip("This value represents how many samples are used to produce the target line effect. Lower values may have better performance");
+                    }
+                }
+                else {
+                    should_save |= ImGui.SliderInt("Minimum Smoothness Steps", ref Globals.Config.saved.TextureCurveSampleCountMin, 3, Globals.Config.saved.TextureCurveSampleCountMax - 3);
+                    if (DrawPerformanceImpact(ConfigPerformanceImpact.Medium)) {
+                        ImGui.SetTooltip("This value represents the minimum number of samples used to produce the target line effect. Lower values may have better performance");
+                    }
+
+                    should_save |= ImGui.SliderInt("Maximum Smoothness Steps", ref Globals.Config.saved.TextureCurveSampleCountMax, Globals.Config.saved.TextureCurveSampleCountMin + 3, 512);
+                    if (DrawPerformanceImpact(ConfigPerformanceImpact.Low)) {
+                        ImGui.SetTooltip("This value represents the maximum number of samples used to produce the target line effect. Lower values may have better performance when there are longer lines");
+                    }
+                }
+                ImGui.TreePop();
+            }
+        }
+        else {
+            ImGui.TextDisabled(" > Fancy Line Options");
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Disable \"Use Legacy Line\" to unfold");
+            }
+        }
+        ImGui.Separator();
+
+        if (ImGui.TreeNode("General Line Appearance")) {
+            should_save |= ImGui.SliderFloat("Height Scale", ref Globals.Config.saved.HeightScale, 0.0f, 1.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("This value scales the height of the source and target. 0 is the feet, 1 is the head");
+            }
+
+            should_save |= ImGui.SliderFloat("Player Arc Height Bump", ref Globals.Config.saved.PlayerHeightBump, 0.0f, 10.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("If the source of the line is a player, it's starting point will be moved up by this amount");
+            }
+
+            should_save |= ImGui.SliderFloat("Enemy Arc Height Bump", ref Globals.Config.saved.EnemyHeightBump, 0.0f, 10.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("If the source of the line is an enemy, it's starting point will be moved up by this amount");
+            }
+
+            should_save |= ImGui.SliderFloat("Arc Scale", ref Globals.Config.saved.ArcHeightScalar, 0.0f, 2.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("This value scales middle point of the line. 0 will make the line flat, 1 will make the middle point of the line the average height of the source and target higher");
+            }
+
+            should_save |= ImGui.SliderFloat("Line Thickness", ref Globals.Config.saved.LineThickness, 0.0f, 64.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("The thickness of the line. 0 will disable the line");
+            }
+
+            should_save |= ImGui.SliderFloat("Outline Thickness", ref Globals.Config.saved.OutlineThickness, 0.0f, 72.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("The thickness of the outline. 0 will disable the outline");
+            }
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+            if (ImGui.TreeNode("Line FX")) {
+                should_save |= ImGui.Checkbox("Use Breathing Effect", ref Globals.Config.saved.BreathingEffect);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("If enabled, the opacity of the lines with fade in-and-out based on the alpha values below");
+                }
+
+                should_save |= ImGui.SliderFloat("Alpha Fade Amplitude", ref Globals.Config.saved.WaveAmplitudeOffset, 0.0f, 0.5f);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("This value represents the maximum difference that the breathing and pulsing effect will have on the opacity of the line");
+                }
+
+                should_save |= ImGui.SliderFloat("Alpha Frequency", ref Globals.Config.saved.WaveFrequencyScalar, 0.0f, 10.0f);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("This value represents the speed in which the breathing and pulsing effect will happen");
+                }
+
+                //// fancy line
+
+                ImGui.TextDisabled("<- Use Pulsing Effect");
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Configurable in Fancy Line Options");
+                }
+
+                ImGui.TextDisabled("<- Fade line as it approaches target");
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Configurable in Fancy Line Options");
+                }
+
+                ImGui.TextDisabled("<- End point opacity %");
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Configurable in Fancy Line Options");
+                }
+            }
+
+            ImGui.TreePop();
+        }
+        ImGui.Separator();
+
+        if (ImGui.TreeNode("Line Animation")) {
+            int selected = (int)Globals.Config.saved.DeathAnimation;
+            if (ImGui.ListBox("No Target Animation", ref selected, Enum.GetNames(typeof(LineDeathAnimation)), (int)LineDeathAnimation.Count)) {
+                Globals.Config.saved.DeathAnimation = (LineDeathAnimation)selected;
+                should_save = true;
+            }
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("The formula to use for flattening the line when there is no longer a target");
+            }
+
+            should_save |= ImGui.SliderFloat("New Target Easing Time", ref Globals.Config.saved.NewTargetEaseTime, 0.0f, 5.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("When switching targets, this represents the time (in seconds) the line will spend shifting to the new target");
+            }
+
+            should_save |= ImGui.SliderFloat("No Target Fading Time", ref Globals.Config.saved.NoTargetFadeTime, 0.0f, 5.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("When there is no longer a target, this represents the time (in seconds) the line will spend fading out");
+            }
+
+            should_save |= ImGui.SliderFloat("No Target Animation Time Scale", ref Globals.Config.saved.DeathAnimationTimeScale, 1.0f, 4.0f);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("A scalar for how quickly the line flattens when there is no target. 1 means the line will be flat at the end of the animation, 2 means it will be flat when 50% of the animation has completed");
+            }
+            ImGui.TreePop();
+        }
+        ImGui.Separator();
+
+        return should_save;
+    }
+
+    private bool DrawDebug() {
+        bool should_save = false;
+
+        should_save |= ImGui.Checkbox("Debug Dynamic Sample Count", ref Globals.Config.saved.DebugDynamicSampleCount);
+        should_save |= ImGui.Checkbox("Debug UI Collision", ref Globals.Config.saved.DebugUICollision);
+        should_save |= ImGui.Checkbox("Debug DX Lines", ref Globals.Config.saved.DebugDXLines);
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("Toggling this requires a plugin restart (I am lazy)");
+        }
+
+        return should_save;
+    }
+
+    public override void Draw() {
+        bool should_save = false;
+        bool node_hover = false;
+        bool nest = false;
+        if (ImGui.BeginTabBar("ConfigTabs")) {
+            if (ImGui.BeginTabItem("Filters")) {
+                nest = true;
+                node_hover = ImGui.IsItemHovered();
+                should_save |= DrawFilters();
+                ImGui.EndTabItem();
+            }
+            if (!nest) {
+                node_hover = ImGui.IsItemHovered();
+            }
+            if (node_hover) {
+                ImGui.SetTooltip("Configure how and when target lines appear");
+            }
+
+            node_hover = false;
+            nest = false;
+            if (ImGui.BeginTabItem("Visuals")) {
+                nest = true;
+                node_hover = ImGui.IsItemHovered();
+                should_save |= DrawVisuals();
+                ImGui.EndTabItem();
+            }
+            if (!nest) {
+                node_hover = ImGui.IsItemHovered();
+            }
+            if (node_hover) {
+                ImGui.SetTooltip("The appearance and performance of target lines");
+            }
+
+            node_hover = false;
+            nest = false;
+            if (ImGui.BeginTabItem("Debug")) {
+                nest = true;
+                node_hover = ImGui.IsItemHovered();
+                should_save |= DrawDebug();
+                ImGui.EndTabItem();
+            }
+            if (!nest) {
+                node_hover = ImGui.IsItemHovered();
+            }
+            if (node_hover) {
+                ImGui.SetTooltip("Sometimes things are broken");
+            }
+            ImGui.EndTabBar();
         }
 
         if (should_save) {

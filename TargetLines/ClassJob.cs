@@ -14,7 +14,7 @@ public static class ClassJobHelper {
         /* 0x0100 */ Healer = (1 << 8),     // include Healer
         /* 0x0200 */ Tank = (1 << 9),       // include Tank
         /* 0x0400 */ CrafterGatherer = (1 << 10),   // include Crafter/Gatherers
-        /* 0x0800 */ MeleeDPS = (1 << 11),  // include Melee DPS
+        /* 0x0800 */ MeleeDPS = (1 << 11),          // include Melee DPS
         /* 0x1000 */ PhysicalRangedDPS = (1 << 12), // include Physical Ranged DPS
         /* 0x2000 */ MagicalRangedDPS = (1 << 13),  // include Magical Ranged DPS
         /* 0x4000 */ PureHealer = (1 << 14),        // include Pure Healer
