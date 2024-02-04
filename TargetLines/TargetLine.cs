@@ -2,7 +2,9 @@
 using DrahsidLib;
 using ImGuiNET;
 using System;
+using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
@@ -10,10 +12,12 @@ namespace TargetLines;
 internal struct LinePoint {
     public Vector2 Pos;
     public bool Visible;
+    public float Dot;
 
-    public LinePoint(Vector2 pos, bool visible) {
+    public LinePoint(Vector2 pos, bool visible, float dot) {
         Pos = pos;
         Visible = visible;
+        Dot = dot;
     }
 }
 
@@ -60,6 +64,9 @@ internal class TargetLine {
     private float MidHeight = 0.0f;
     private float LastMidHeight = 0.0f;
     private float LastTargetHeight = 0.0f;
+
+    private Stopwatch FPPTransition = new Stopwatch();
+    private float FPPLastTransition = 0.0f;
 
     private LinePoint[] Points;
     private float LinePointStep;
@@ -184,6 +191,17 @@ internal class TargetLine {
                 continue;
             }
 
+            // skip lines that intersect the camera in first person
+            if (!Globals.IsAngleThetaInsidePerspective(point.Dot) || !Globals.IsAngleThetaInsidePerspective(nextpoint.Dot)) {
+                if (index == 0) {
+                    firstSegmentOccluded = true;
+                }
+                else if (index == sampleCount - 2) {
+                    lastSegmentOccluded = true;
+                }
+                continue;
+            }
+
             Vector2 p1 = point.Pos;
             Vector2 p2 = nextpoint.Pos;
 
@@ -291,20 +309,83 @@ internal class TargetLine {
         MidPosition.Y += (MidHeight * Globals.Config.saved.ArcHeightScalar) * height_fix;
     }
 
+    private unsafe Vector3 GetTransitionPosition(Vector3 startPosition, Vector3 endPosition, float transition, bool isFPP) {
+        if (transition == 0) {
+            FPPTransition.Stop();
+            FPPTransition.Reset();
+            if (isFPP) {
+                return endPosition;
+            }
+        } else {
+            if (!FPPTransition.IsRunning || MathF.Sign(transition) != MathF.Sign(FPPLastTransition)) {
+                FPPTransition.Restart();
+            }
+            FPPLastTransition = transition;
+        }
+    
+        float t = FPPTransition.ElapsedMilliseconds / 1000.0f / 0.49f;
+
+        if (transition < 0) {
+            t *= 0.5f;
+        }
+        else {
+            t *= 2.0f;
+        }
+
+        if (t > 1) {
+            t = 1;
+        }
+
+        return Vector3.Lerp(transition > 0 ? startPosition : endPosition, transition > 0 ? endPosition : startPosition, t);
+    }
+
+    private unsafe Vector3 CalculatePosition(Vector3 tppPosition, bool isPlayer, out bool fpp) {
+        Vector3 position = tppPosition;
+        fpp = false;
+        if (isPlayer) {
+            fpp = Globals.IsInFirstPerson();
+            var cam = Service.CameraManager->Camera;
+            float transition = Marshal.PtrToStructure<float>(((IntPtr)cam) + 0x1E0); // TODO: place in struct
+            if (fpp || transition != 0 || FPPTransition.IsRunning) {
+                Vector3 cameraPosition = Globals.WorldCamera_GetPos() + (-2.0f * Globals.WorldCamera_GetForward());
+                cameraPosition.Y -= 1.0f;
+                position = GetTransitionPosition(tppPosition, cameraPosition, transition, fpp);
+            }
+        }
+        return position;
+    }
+    
+    public unsafe Vector3 GetSourcePosition(out bool fpp) {
+        return CalculatePosition(Self.Position, Self.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
+    }
+    
+    public unsafe Vector3 GetTargetPosition(out bool fpp) {
+        return CalculatePosition(Self.TargetObject.Position, Self.TargetObject.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
+    }
+
 
     private void UpdateStateNewTarget() {
-        Vector3 start = Self.Position;
-        Vector3 end = Self.TargetObject.Position;
+        bool fpp0;
+        bool fpp1;
+        Vector3 _source = GetSourcePosition(out fpp0);
+        Vector3 _target = GetTargetPosition(out fpp1);
+        Vector3 start = _source;
+        Vector3 end = _target;
+
         float start_height = Self.GetCursorHeight();
         float end_height = Self.TargetObject.GetCursorHeight();
         float mid_height = (start_height + end_height) * 0.5f;
+
+        float start_height_scaled = (fpp0 ? 0 : start_height) * Globals.Config.saved.HeightScale;
+        float end_height_scaled = (fpp1 ? 0 : end_height) * Globals.Config.saved.HeightScale;
+
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
         LastTargetHeight = end_height;
         MidHeight = mid_height;
 
-        start.Y += start_height * Globals.Config.saved.HeightScale;
-        end.Y += end_height * Globals.Config.saved.HeightScale;
+        start.Y += start_height_scaled;
+        end.Y += end_height_scaled;
 
         if (alpha >= 1) {
             State = LineState.Idle;
@@ -313,7 +394,7 @@ internal class TargetLine {
 
         Position = start;
         TargetPosition = Vector3.Lerp(start, end, alpha);
-        LastTargetPosition2 = Vector3.Lerp(Self.Position, Self.TargetObject.Position, alpha);
+        LastTargetPosition2 = Vector3.Lerp(_source, _target, alpha);
     }
 
     private void UpdateStateDying_Anim(float mid_height) {
@@ -333,17 +414,25 @@ internal class TargetLine {
     }
 
     private void UpdateStateDying() {
-        Vector3 start = Self.Position;
+        bool fpp;
+        Vector3 _source = GetSourcePosition(out fpp);
+
+        Vector3 start = _source;
         Vector3 end = LastTargetPosition;
+
         float start_height = Self.GetCursorHeight();
         float end_height = LastTargetHeight;
         float mid_height = (start_height + end_height) * 0.5f;
+
+        float start_height_scaled = (fpp ? 0 : start_height) * Globals.Config.saved.HeightScale;
+        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
+
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NoTargetFadeTime));
 
         UpdateStateDying_Anim(mid_height);
 
-        start.Y += start_height * Globals.Config.saved.HeightScale;
-        end.Y += end_height * Globals.Config.saved.HeightScale;
+        start.Y += start_height_scaled;
+        end.Y += end_height_scaled;
 
         if (alpha >= 1) {
             ShouldDelete = true;
@@ -351,47 +440,62 @@ internal class TargetLine {
 
         Position = start;
         TargetPosition = Vector3.Lerp(end, start, alpha);
-        LastTargetPosition2 = Vector3.Lerp(Self.Position, LastTargetPosition, alpha);
+        LastTargetPosition2 = Vector3.Lerp(_source, LastTargetPosition, alpha);
     }
 
     private void UpdateStateSwitching() {
+        bool fpp0;
+        bool fpp1;
+        Vector3 _source = GetSourcePosition(out fpp0);
+        Vector3 _target = GetTargetPosition(out fpp1);
+
         Vector3 start = LastTargetPosition;
-        Vector3 end = Self.TargetObject.Position;
+        Vector3 end = _target;
+
         float start_height = Self.GetCursorHeight();
         float end_height = Self.TargetObject.GetCursorHeight();
         float mid_height = (start_height + end_height) * 0.5f;
-        Vector3 target_position = Self.TargetObject.Position;
+
+        float start_height_scaled = (fpp0 ? 0 : start_height) * Globals.Config.saved.HeightScale;
+        float end_height_scaled = (fpp1 ? 0 : end_height) * Globals.Config.saved.HeightScale;
+
         float alpha = Math.Max(0, Math.Min(1, StateTime / Globals.Config.saved.NewTargetEaseTime));
 
         start.Y += LastTargetHeight * Globals.Config.saved.HeightScale;
-        end.Y += end_height * Globals.Config.saved.HeightScale;
+        end.Y += end_height_scaled * Globals.Config.saved.HeightScale;
 
         if (alpha >= 1) {
             State = LineState.Idle;
             LastTargetId = Self.TargetObject.ObjectId;
         }
 
-        Position = Self.Position;
-        Position.Y += start_height * Globals.Config.saved.HeightScale;
+        Position = _source;
+        Position.Y += start_height_scaled * Globals.Config.saved.HeightScale;
 
         TargetPosition = Vector3.Lerp(start, end, alpha);
-        LastTargetPosition2 = Vector3.Lerp(LastTargetPosition, target_position, alpha);
+        LastTargetPosition2 = Vector3.Lerp(LastTargetPosition, _target, alpha);
         MidHeight = MathUtils.Lerpf(LastMidHeight, mid_height, alpha);
     }
 
     private void UpdateStateIdle() {
+        bool fpp0;
+        bool fpp1;
+        Vector3 _source = GetSourcePosition(out fpp0);
+        Vector3 _target = GetTargetPosition(out fpp1);
+
         float start_height = Self.GetCursorHeight();
         float end_height = Self.TargetObject.GetCursorHeight();
-        float start_height_scaled = start_height * Globals.Config.saved.HeightScale;
-        float end_height_scaled = end_height * Globals.Config.saved.HeightScale;
         float mid_height = (start_height + end_height) * 0.5f;
+
+        float start_height_scaled = (fpp0 ? 0 : start_height) * Globals.Config.saved.HeightScale;
+        float end_height_scaled = (fpp1 ? 0 : end_height) * Globals.Config.saved.HeightScale;
 
         LastTargetHeight = end_height;
         MidHeight = mid_height;
 
-        Position = Self.Position;
+        Position = _source;
 
-        TargetPosition = Self.TargetObject.Position;
+        TargetPosition = _target;
         LastTargetPosition = TargetPosition;
         LastTargetPosition2 = LastTargetPosition;
 
@@ -544,6 +648,7 @@ internal class TargetLine {
                 bool vis = Service.GameGui.WorldToScreen(point, out Vector2 screenPoint);
                 Points[index].Pos = screenPoint;
                 Points[index].Visible = vis;
+                Points[index].Dot = Globals.GetAngleThetaToCamera(point);
             }
         }
 
@@ -587,6 +692,12 @@ internal class TargetLine {
             else {
                 sampleCountTarget = Globals.Config.saved.TextureCurveSampleCount;
             }
+
+            // less chonky lines in first person
+            if (Globals.IsInFirstPerson()) {
+                sampleCountTarget *= 2;
+            }
+
             if (Points.Length != sampleCountTarget) {
                 InitializeLinePoints(sampleCountTarget);
             }
@@ -600,6 +711,7 @@ internal class TargetLine {
         }
 
         HasTarget = Self.TargetObject != null;
+
         UpdateState();
         UpdateColors();
 

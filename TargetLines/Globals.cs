@@ -2,6 +2,8 @@
 using FFXIVClientStructs.FFXIV.Common.Math;
 using DrahsidLib;
 using Dalamud.Interface.Internal;
+using System;
+using ImGuiNET;
 
 namespace TargetLines;
 
@@ -51,13 +53,47 @@ internal class Globals {
         return Vector3.Normalize(WorldCamera_GetPos() - WorldCamera_GetLookAtPos());
     }
 
-    public static unsafe bool IsVisible(Vector3 position, bool occlusion) {
+    public static unsafe bool IsInFirstPerson() {
+        if (Service.CameraManager->Camera != null) {
+            if (Service.CameraManager->Camera->Mode == 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static unsafe bool IsAngleThetaInsidePerspective(float dot) {
+        if (Service.CameraManager->Camera == null) {
+            return false;
+        }
+
+        var device = FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.Device.Instance();
+        var cam = Service.CameraManager->Camera;
+        float angle = MathF.Acos(dot);
+        float fovy = cam->FoV;
+        float fovx = 2.0f * MathF.Atan(MathF.Tan(cam->FoV * 0.5f) * device->AspectRatio);
+        if (MathF.Abs(angle) <= fovy * 0.5f || MathF.Abs(angle) <= fovx * 0.5f) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static unsafe float GetAngleThetaToCamera(Vector3 position) {
         Vector3 cam = WorldCamera_GetPos();
         Vector3 forward = WorldCamera_GetForward();
-        Vector3 to_camera = cam - position;
+        Vector3 to_camera = Vector3.Normalize(cam - position);
 
+        return Vector3.Dot(to_camera, forward);
+    }
+
+    public static unsafe bool IsVisible(Vector3 position, bool occlusion) {
+        Vector3 cam = WorldCamera_GetPos();
+
+        float dot = GetAngleThetaToCamera(position);
         // behind camera
-        if (Vector3.Dot(to_camera, forward) < 0) {
+        if (dot < 0) {
             return false;
         }
 
