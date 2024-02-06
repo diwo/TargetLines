@@ -147,6 +147,8 @@ public class Plugin : IDalamudPlugin {
                 targetLine.Draw();
             }
         }
+
+        UICollision.DrawDebugOutlines();
     }
 
     private LineActor? testLine = null;

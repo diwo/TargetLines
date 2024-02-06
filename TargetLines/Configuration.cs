@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
+using System.Runtime.InteropServices;
 using static TargetLines.ClassJobHelper;
 
 namespace TargetLines;
@@ -39,17 +39,19 @@ public class TargetSettings {
     }
 };
 
-public class ABGR {
-    public byte a;
-    public byte b;
-    public byte g;
-    public byte r;
+[StructLayout(LayoutKind.Explicit)]
+public struct RGBA {
+    [FieldOffset(0x00)] public uint raw;
+    [FieldOffset(0x00)] public byte r;
+    [FieldOffset(0x01)] public byte g;
+    [FieldOffset(0x02)] public byte b;
+    [FieldOffset(0x03)] public byte a;
 
-    public ABGR(byte A, byte B, byte G, byte R) {
-        a = A;
-        b = B;
-        g = G;
+    public RGBA(byte A, byte B, byte G, byte R) {
         r = R;
+        g = G;
+        b = B;
+        a = A;
     }
 
     [JsonIgnore]
@@ -64,40 +66,29 @@ public class ABGR {
             r = (byte)(value.X * 255.0f);
         }
     }
-
-    public void CopyValues(ABGR from) {
-        a = from.a;
-        b = from.b;
-        g = from.g;
-        r = from.r;
-    }
-
-    public uint GetRaw() {
-        return (uint)((a << 24) | (b << 16) | (g << 8) | r);
-    }
 }
 
 public class LineColor {
-    public ABGR Color = new ABGR(0x80, 0x00, 0xBF, 0xFF);
-    public ABGR OutlineColor = new ABGR(0x80, 0x00, 0x00, 0x00);
+    public RGBA Color = new RGBA(0x80, 0x00, 0xBF, 0xFF);
+    public RGBA OutlineColor = new RGBA(0x80, 0x00, 0x00, 0x00);
     public bool Visible = true;
     public bool UseQuad = false;
 
     public LineColor() {
-        Color = new ABGR(0x80, 0x00, 0xBF, 0xFF);
-        OutlineColor = new ABGR(0x80, 0x00, 0x00, 0x00);
+        Color = new RGBA(0x80, 0x00, 0xBF, 0xFF);
+        OutlineColor = new RGBA(0x80, 0x00, 0x00, 0x00);
         Visible = true;
         UseQuad = false;
     }
 
-    public LineColor(ABGR color, ABGR outline, bool visible = true, bool usequad = false) {
+    public LineColor(RGBA color, RGBA outline, bool visible = true, bool usequad = false) {
         Color = color;
         OutlineColor = outline;
         Visible = visible;
         UseQuad = usequad;
     }
 
-    public LineColor(ABGR color, bool visible = true, bool usequad = false) {
+    public LineColor(RGBA color, bool visible = true, bool usequad = false) {
         Color = color;
         Visible = visible;
         UseQuad = usequad;
@@ -180,16 +171,16 @@ public class SavedConfig {
 #if HELLOTRI_TEST
     public bool HelloTriTest = false;
 #endif
-    public LineColor LineColor = new LineColor(new ABGR(0xC0, 0x80, 0x80, 0x80), new ABGR(0x80, 0x00, 0x00, 0x00), true); // fallback color
+    public LineColor LineColor = new LineColor(new RGBA(0xC0, 0x80, 0x80, 0x80), new RGBA(0x80, 0x00, 0x00, 0x00), true); // fallback color
     public LineDeathAnimation DeathAnimation = LineDeathAnimation.Linear;
     public float DeathAnimationTimeScale = 1.0f;
 
-    [Obsolete] public ABGR PlayerPlayerLineColor;
-    [Obsolete] public ABGR PlayerEnemyLineColor;
-    [Obsolete] public ABGR EnemyPlayerLineColor;
-    [Obsolete] public ABGR EnemyEnemyLineColor;
-    [Obsolete] public ABGR OtherLineColor;
-    [Obsolete] public ABGR OutlineColor;
+    [Obsolete] public RGBA? PlayerPlayerLineColor;
+    [Obsolete] public RGBA? PlayerEnemyLineColor;
+    [Obsolete] public RGBA? EnemyPlayerLineColor;
+    [Obsolete] public RGBA? EnemyEnemyLineColor;
+    [Obsolete] public RGBA? OtherLineColor;
+    [Obsolete] public RGBA? OutlineColor;
     [Obsolete] public bool OnlyTargetingPC = false;
 }
 
@@ -212,25 +203,25 @@ public class Configuration : IPluginConfiguration {
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Player),
                     new TargetSettings(TargetFlags.Player),
-                    new LineColor(new ABGR(0xC0, 0x50, 0xAF, 0x4C)) // greenish
+                    new LineColor(new RGBA(0xC0, 0x50, 0xAF, 0x4C)) // greenish
                 ),
                 // player -> enemy default
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Player),
                     new TargetSettings(TargetFlags.Enemy),
-                    new LineColor(new ABGR(0x80, 0x36, 0x43, 0xF4)) // reddish
+                    new LineColor(new RGBA(0x80, 0x36, 0x43, 0xF4)) // reddish
                 ), 
                 // enemy -> player default
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Enemy),
                     new TargetSettings(TargetFlags.Player),
-                    new LineColor(new ABGR(0xC0, 0x00, 0x00, 0xFF), true, true) // red
+                    new LineColor(new RGBA(0xC0, 0x00, 0x00, 0xFF), true, true) // red
                 ),
                 // enemy -> enemy default
                 new TargetSettingsPair(
                     new TargetSettings(TargetFlags.Enemy),
                     new TargetSettings(TargetFlags.Enemy),
-                    new LineColor(new ABGR(0xC0, 0xB0, 0x27, 0x9C), true, true) // purpleish
+                    new LineColor(new RGBA(0xC0, 0xB0, 0x27, 0x9C), true, true) // purpleish
                 )
             };
     }
@@ -258,7 +249,7 @@ public class Configuration : IPluginConfiguration {
             TargetSettings to = new TargetSettings(TargetFlags.Player, 0);
 
             LineColorsWasNull++;
-            LineColors.Add(new TargetSettingsPair(from, to, new LineColor(saved.PlayerPlayerLineColor, saved.OutlineColor, true)));
+            LineColors.Add(new TargetSettingsPair(from, to, new LineColor((RGBA)saved.PlayerPlayerLineColor, (RGBA)saved.OutlineColor, true)));
 
             saved.PlayerPlayerLineColor = null;
         }
@@ -268,7 +259,7 @@ public class Configuration : IPluginConfiguration {
             TargetSettings to = new TargetSettings(TargetFlags.Enemy, 0);
 
             LineColorsWasNull++;
-            LineColors.Add(new TargetSettingsPair(from, to, new LineColor(saved.PlayerEnemyLineColor, saved.OutlineColor, true)));
+            LineColors.Add(new TargetSettingsPair(from, to, new LineColor((RGBA)saved.PlayerEnemyLineColor, (RGBA)saved.OutlineColor, true)));
             saved.PlayerEnemyLineColor = null;
         }
 
@@ -277,7 +268,7 @@ public class Configuration : IPluginConfiguration {
             TargetSettings to = new TargetSettings(TargetFlags.Player, 0);
 
             LineColorsWasNull++;
-            LineColors.Add(new TargetSettingsPair(from, to, new LineColor(saved.EnemyPlayerLineColor, saved.OutlineColor, true)));
+            LineColors.Add(new TargetSettingsPair(from, to, new LineColor((RGBA)saved.EnemyPlayerLineColor, (RGBA)saved.OutlineColor, true)));
             saved.EnemyPlayerLineColor = null;
         }
 
@@ -286,7 +277,7 @@ public class Configuration : IPluginConfiguration {
             TargetSettings to = new TargetSettings(TargetFlags.Enemy, 0);
 
             LineColorsWasNull++;
-            LineColors.Add(new TargetSettingsPair(from, to, new LineColor(saved.EnemyEnemyLineColor, saved.OutlineColor, true)));
+            LineColors.Add(new TargetSettingsPair(from, to, new LineColor((RGBA)saved.EnemyEnemyLineColor, (RGBA)saved.OutlineColor, true)));
             saved.EnemyEnemyLineColor = null;
         }
 

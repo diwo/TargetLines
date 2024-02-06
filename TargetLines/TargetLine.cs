@@ -41,13 +41,13 @@ internal class TargetLine {
     private Vector3 Position = new Vector3();
     private Vector3 MidPosition = new Vector3();
     private Vector3 TargetPosition = new Vector3();
-    private ABGR LineColor = new ABGR(0, 0, 0, 0);
-    private ABGR OutlineColor = new ABGR(0, 0, 0, 0);
+    private RGBA LineColor = new RGBA(0, 0, 0, 0);
+    private RGBA OutlineColor = new RGBA(0, 0, 0, 0);
 
     private Vector3 LastTargetPosition = new Vector3();
     private Vector3 LastTargetPosition2 = new Vector3();
-    private ABGR LastLineColor = new ABGR(0, 0, 0, 0);
-    private ABGR LastOutlineColor = new ABGR(0, 0, 0, 0);
+    private RGBA LastLineColor = new RGBA(0, 0, 0, 0);
+    private RGBA LastOutlineColor = new RGBA(0, 0, 0, 0);
     
     private bool UseQuad = false;
     private bool Visible = true;
@@ -78,8 +78,8 @@ internal class TargetLine {
     private readonly Vector2 uv3 = new Vector2(1.0f, 1.0f);
     private readonly Vector2 uv4 = new Vector2(1.0f, 0);
 
-    ABGR tempLineColor = new ABGR(0, 0, 0, 0);
-    ABGR tempOutlineColor = new ABGR(0, 0, 0, 0);
+    RGBA tempLineColor = new RGBA(0, 0, 0, 0);
+    RGBA tempOutlineColor = new RGBA(0, 0, 0, 0);
 
     public TargetLine(GameObject obj) {
         Self = obj;
@@ -149,18 +149,18 @@ internal class TargetLine {
 
         if (UseQuad) {
             if (outlineThickness > 0) {
-                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.GetRaw(), outlineThickness);
+                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.raw, outlineThickness);
             }
             if (lineThickness > 0) {
-                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, LineColor.GetRaw(), lineThickness);
+                drawlist.AddBezierQuadratic(ScreenPos, MidScreenPos, TargetScreenPos, LineColor.raw, lineThickness);
             }
         }
         else {
             if (outlineThickness > 0) {
-                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.GetRaw(), outlineThickness);
+                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, OutlineColor.raw, outlineThickness);
             }
             if (lineThickness > 0) {
-                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, LineColor.GetRaw(), lineThickness);
+                drawlist.AddBezierCubic(ScreenPos, MidScreenPos, MidScreenPos, TargetScreenPos, LineColor.raw, lineThickness);
             }
         }
     }
@@ -206,38 +206,42 @@ internal class TargetLine {
             Vector2 p2 = nextpoint.Pos;
 
             Vector2 dir = Vector2.Normalize(p2 - p1);
-            Vector2 perp = new Vector2(-dir.Y, dir.X);
+            Vector2 perp = new Vector2(-dir.Y, dir.X) * lineThickness;
+            Vector2 perpo = new Vector2(-dir.Y, dir.X) * outlineThickness;
 
-            Vector2 p1_perp = p1 + perp * lineThickness;
-            Vector2 p2_perp = p2 + perp * lineThickness;
-            Vector2 p1_perp_inv = p1 - perp * lineThickness;
-            Vector2 p2_perp_inv = p2 - perp * lineThickness;
+            Vector2 p1_perp = p1 + perp;
+            Vector2 p2_perp = p2 + perp;
+            Vector2 p1_perp_inv = p1 - perp;
+            Vector2 p2_perp_inv = p2 - perp;
 
-            Vector2 p1_perpo = p1 + perp * outlineThickness;
-            Vector2 p2_perpo = p2 + perp * outlineThickness;
-            Vector2 p1_perp_invo = p1 - perp * outlineThickness;
-            Vector2 p2_perp_invo = p2 - perp * outlineThickness;
+            Vector2 p1_perpo = p1 + perpo;
+            Vector2 p2_perpo = p2 + perpo;
+            Vector2 p1_perp_invo = p1 - perpo;
+            Vector2 p2_perp_invo = p2 - perpo;
 
-            ABGR linecolor_index = LineColor;
-            ABGR outlinecolor_index = OutlineColor;
+            RGBA* linecolor_index = stackalloc RGBA[1];
+            RGBA* outlinecolor_index = stackalloc RGBA[1];
+
+            linecolor_index->raw = LineColor.raw;
+            outlinecolor_index->raw = OutlineColor.raw;
 
             if (shouldCalculatePulsatingEffect) {
                 float p = index * LinePointStep;
                 float pulsatingAlpha = MathF.Sin(-currentTime * pulsatingSpeed + (p * MathF.PI) + HPI);
                 pulsatingAlpha = Math.Clamp(pulsatingAlpha * pulsatingAmplitude + min, min, max);
-                linecolor_index.a = (byte)pulsatingAlpha;
-                outlinecolor_index.a = (byte)pulsatingAlpha;
+                linecolor_index->a = (byte)pulsatingAlpha;
+                outlinecolor_index->a = (byte)pulsatingAlpha;
             }
 
             if (shouldFadeToEnd) {
-                float alphaFade = MathUtils.Lerpf((float)outlinecolor_index.a,
-                    (float)(outlinecolor_index.a * Globals.Config.saved.FadeToEndScalar),
+                float alphaFade = MathUtils.Lerpf((float)outlinecolor_index->a,
+                    (float)(outlinecolor_index->a * Globals.Config.saved.FadeToEndScalar),
                     (float)index * LinePointStep);
 
-                outlinecolor_index.a = (byte)alphaFade;
+                outlinecolor_index->a = (byte)alphaFade;
             }
 
-            segmentOccluded = linecolor_index.a == 0 || lineThickness == 0;
+            segmentOccluded = linecolor_index->a == 0 || lineThickness == 0;
             if (Globals.Config.saved.UIOcclusion && !segmentOccluded) {
                 segmentOccluded = UICollision.OcclusionCheck(p1_perp_inv, p2_perp_inv, p2_perp, p1_perp);
                 if (index == 0) {
@@ -249,10 +253,10 @@ internal class TargetLine {
             }
 
             if (!segmentOccluded) {
-                drawlist.AddImageQuad(Globals.LineTexture.ImGuiHandle, p1_perp_inv, p2_perp_inv, p2_perp, p1_perp, uv1, uv2, uv3, uv4, linecolor_index.GetRaw());
+                drawlist.AddImageQuad(Globals.LineTexture.ImGuiHandle, p1_perp_inv, p2_perp_inv, p2_perp, p1_perp, uv1, uv2, uv3, uv4, linecolor_index->raw);
 
-                if (outlinecolor_index.a != 0 && outlineThickness != 0) {
-                    drawlist.AddImageQuad(Globals.OutlineTexture.ImGuiHandle, p1_perp_invo, p2_perp_invo, p2_perpo, p1_perpo, uv1, uv2, uv3, uv4, outlinecolor_index.GetRaw());
+                if (outlinecolor_index->a != 0 && outlineThickness != 0) {
+                    drawlist.AddImageQuad(Globals.OutlineTexture.ImGuiHandle, p1_perp_invo, p2_perp_invo, p2_perpo, p1_perpo, uv1, uv2, uv3, uv4, outlinecolor_index->raw);
                 }
             }
         }
@@ -262,23 +266,34 @@ internal class TargetLine {
         Vector2 start_perp = new Vector2(-start_dir.Y, start_dir.X) * lineThickness;
         Vector2 end_perp = new Vector2(-end_dir.Y, end_dir.X) * lineThickness;
 
-        Vector2 start_p1 = Points[0].Pos - start_perp;
-        Vector2 start_p2 = Points[0].Pos + start_perp;
-        Vector2 end_p1 = Points[sampleCount - 1].Pos - end_perp;
-        Vector2 end_p2 = Points[sampleCount - 1].Pos + end_perp;
+        Vector2 start_p1 = Points[0].Pos - start_dir;
+        Vector2 start_p2 = Points[0].Pos + start_dir;
 
-        ABGR linecolor_end = new ABGR(0, 0, 0, 0);
-        linecolor_end.CopyValues(LineColor);
+        start_p1.X -= lineThickness * 0.45f;
+        start_p1.Y -= lineThickness * 0.45f;
+        start_p2.X += lineThickness * 0.45f;
+        start_p2.Y += lineThickness * 0.45f;
+
+        Vector2 end_p1 = Points[sampleCount - 1].Pos - end_dir;
+        Vector2 end_p2 = Points[sampleCount - 1].Pos + end_dir;
+
+        end_p1.X -= lineThickness * 0.45f;
+        end_p1.Y -= lineThickness * 0.45f;
+        end_p2.X += lineThickness * 0.45f;
+        end_p2.Y += lineThickness * 0.45f;
+
+        RGBA* linecolor_end = stackalloc RGBA[1];
+        linecolor_end->raw = LineColor.raw;
         if (shouldFadeToEnd) {
-            linecolor_end.a = (byte)(linecolor_end.a * Globals.Config.saved.FadeToEndScalar);
+            linecolor_end->a = (byte)(linecolor_end->a * Globals.Config.saved.FadeToEndScalar);
         }
 
         if (DrawBeginCap && !firstSegmentOccluded) {
-            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, start_p1, start_p2, uv1, uv3, LineColor.GetRaw());
+            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, start_p1, start_p2, uv1, uv3, LineColor.raw);
         }
 
         if (DrawEndCap && !lastSegmentOccluded) {
-            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, end_p1, end_p2, uv1, uv3, LineColor.GetRaw());
+            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, end_p1, end_p2, uv1, uv3, linecolor_end->raw);
         }
     }
 
@@ -339,7 +354,7 @@ internal class TargetLine {
         return Vector3.Lerp(transition > 0 ? startPosition : endPosition, transition > 0 ? endPosition : startPosition, t);
     }
 
-    private unsafe Vector3 CalculatePosition(Vector3 tppPosition, bool isPlayer, out bool fpp) {
+    private unsafe Vector3 CalculatePosition(Vector3 tppPosition, float height, bool isPlayer, out bool fpp) {
         Vector3 position = tppPosition;
         fpp = false;
         if (isPlayer) {
@@ -348,7 +363,7 @@ internal class TargetLine {
             float transition = Marshal.PtrToStructure<float>(((IntPtr)cam) + 0x1E0); // TODO: place in struct
             if (fpp || transition != 0 || FPPTransition.IsRunning) {
                 Vector3 cameraPosition = Globals.WorldCamera_GetPos() + (-2.0f * Globals.WorldCamera_GetForward());
-                cameraPosition.Y -= 1.0f;
+                cameraPosition.Y -= height;
                 position = GetTransitionPosition(tppPosition, cameraPosition, transition, fpp);
             }
         }
@@ -356,11 +371,11 @@ internal class TargetLine {
     }
     
     public unsafe Vector3 GetSourcePosition(out bool fpp) {
-        return CalculatePosition(Self.Position, Self.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
+        return CalculatePosition(Self.Position, Self.GetCursorHeight() - 0.2f, Self.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
     }
     
     public unsafe Vector3 GetTargetPosition(out bool fpp) {
-        return CalculatePosition(Self.TargetObject.Position, Self.TargetObject.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
+        return CalculatePosition(Self.TargetObject.Position, Self.TargetObject.GetCursorHeight() - 0.2f, Self.TargetObject.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
     }
 
 
@@ -568,13 +583,13 @@ internal class TargetLine {
         float alpha = 1.0f;
 
         if (Globals.Config.saved.LineColor.Visible) {
-            LineColor.CopyValues(Globals.Config.saved.LineColor.Color);
-            OutlineColor.CopyValues(Globals.Config.saved.LineColor.OutlineColor);
+            LineColor.raw = Globals.Config.saved.LineColor.Color.raw;
+            OutlineColor.raw = Globals.Config.saved.LineColor.OutlineColor.raw;
         }
 
         if (Self.TargetObject == null) {
-            LineColor.CopyValues(LastLineColor);
-            OutlineColor.CopyValues(LastOutlineColor);
+            LineColor.raw = LastLineColor.raw;
+            OutlineColor.raw = LastOutlineColor.raw;
         }
         else {
             int highestPriority = -1;
@@ -590,18 +605,18 @@ internal class TargetLine {
                     }
                     if (should_copy) {
                         highestPriority = priority;
-                        tempLineColor.CopyValues(settings.LineColor.Color);
-                        tempOutlineColor.CopyValues(settings.LineColor.OutlineColor);
+                        tempLineColor.raw = settings.LineColor.Color.raw;
+                        tempOutlineColor.raw = settings.LineColor.OutlineColor.raw;
                         UseQuad = settings.LineColor.UseQuad;
                         Visible = settings.LineColor.Visible;
                     }
                 }
             }
 
-            LineColor.CopyValues(tempLineColor);
-            OutlineColor.CopyValues(tempOutlineColor);
-            LastLineColor.CopyValues(LineColor);
-            LastOutlineColor.CopyValues(OutlineColor);
+            LineColor.raw = tempLineColor.raw;
+            OutlineColor.raw = tempOutlineColor.raw;
+            LastLineColor.raw = LineColor.raw;
+            LastOutlineColor.raw = OutlineColor.raw;
         }
 
         if (Globals.Config.saved.BreathingEffect) {
@@ -681,10 +696,22 @@ internal class TargetLine {
             if (Globals.Config.saved.DynamicSampleCount) {
                 int min = Globals.Config.saved.TextureCurveSampleCountMin;
                 int max = Globals.Config.saved.TextureCurveSampleCountMax;
+                float thickScalar = Globals.Config.saved.LineThickness / 32.0f;
+                if (thickScalar < 1.0f) {
+                    thickScalar = 1.0f;
+                }
+
                 sampleCountTarget = min + ((int)MathF.Floor(1.5f + (TargetPosition - Position).Length())) * 2;
 
                 if (sampleCountTarget > max) {
                     sampleCountTarget = max;
+                }
+
+                sampleCountTarget = (int)MathF.Floor(sampleCountTarget * thickScalar);
+
+                // less chonky lines in first person
+                if (Globals.IsInFirstPerson()) {
+                    sampleCountTarget *= 2;
                 }
 
                 sampleCountTarget -= (~sampleCountTarget & 1); // make it odd so there is a peak
@@ -693,10 +720,7 @@ internal class TargetLine {
                 sampleCountTarget = Globals.Config.saved.TextureCurveSampleCount;
             }
 
-            // less chonky lines in first person
-            if (Globals.IsInFirstPerson()) {
-                sampleCountTarget *= 2;
-            }
+            
 
             if (Points.Length != sampleCountTarget) {
                 InitializeLinePoints(sampleCountTarget);
