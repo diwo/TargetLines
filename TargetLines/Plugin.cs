@@ -19,6 +19,8 @@ public class Plugin : IDalamudPlugin {
 
     public string Name => "TargetLines";
 
+    private bool WasInPvP = false;
+
     private const ImGuiWindowFlags OVERLAY_WINDOW_FLAGS =
           ImGuiWindowFlags.NoBackground
         | ImGuiWindowFlags.NoDecoration
@@ -41,6 +43,11 @@ public class Plugin : IDalamudPlugin {
         InitializeCommands();
         InitializeConfig();
         InitializeUI();
+
+        // as it turns out there's some folks making "true pvp" builds of this plugin, so let's have some fun with them
+        if (pluginInterface.InternalName.ToLower().Contains("pvp")) {
+            Globals.HandlePvP = true;
+        }
 
         TargetLineDict = new Dictionary<uint, TargetLine>();
 
@@ -91,6 +98,20 @@ public class Plugin : IDalamudPlugin {
 
     private unsafe void DrawOverlay() {
         Globals.Runtime += Globals.Framework->FrameDeltaTime;
+
+        if (Globals.HandlePvP)
+        {
+            if (WasInPvP != Service.ClientState.IsPvP)
+            {
+                Globals.HandlePvPTime = 0.0f;
+                WasInPvP = Service.ClientState.IsPvP;
+            }
+
+            if (Service.ClientState.IsPvP)
+            {
+                Globals.HandlePvPTime += Globals.Framework->FrameDeltaTime;
+            }
+        }
 
         if (Globals.Config.saved.DebugDXLines && ShaderSingleton.Initialized) {
             Service.GameGui.WorldToScreen(new Vector3(-1.0f, 0.1f, 5.0f), out Vector2 source);

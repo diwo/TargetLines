@@ -60,6 +60,11 @@ public static class GameObjectExtensions {
         return obj as PlayerCharacter;
     }
 
+    public static unsafe FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* GetClientStructGameObject(this GameObject obj)
+    {
+        return (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
+    }
+
     public static unsafe TargetSettings GetTargetSettings(this GameObject obj) {
         TargetSettings settings = new TargetSettings();
         settings.Flags = TargetFlags.Any;

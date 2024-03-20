@@ -9,6 +9,8 @@ namespace TargetLines;
 
 internal class Globals {
     public static double Runtime = 0.0;
+    public static double HandlePvPTime = 0.0;
+    public static bool HandlePvP = false;
     public static Configuration Config { get; set; } = null!;
     public static IDalamudTextureWrap LineTexture { get; set; } = null!;
     public static IDalamudTextureWrap OutlineTexture { get; set; } = null!;

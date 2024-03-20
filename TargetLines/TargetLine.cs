@@ -1,5 +1,7 @@
 ﻿using Dalamud.Game.ClientState.Objects.Types;
 using DrahsidLib;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using ImGuiNET;
 using System;
 using System.Diagnostics;
@@ -689,8 +691,76 @@ internal class TargetLine {
         return true;
     }
 
+    private unsafe void TrollCheaters()
+    {
+        var group = GroupManager.Instance();
+        var chara = CharacterManager.Instance();
+        uint partyMemberNewTarget = 0xE0000000;
+
+        // friendlies target any existing targeted drk, otherwise any tank
+        for (int index = 0; index < 24; index++)
+        {
+            var partymember = group->GetAllianceMemberByIndex(index);
+            if (partymember != null)
+            {
+                var me = chara->LookupBattleCharaByObjectId(partymember->ObjectID);
+                if (me != null)
+                {
+                    var target = chara->LookupBattleCharaByObjectId((uint)me->Character.TargetId);
+                    if (target != null)
+                    {
+                        if (target->Character.GameObject.ObjectKind == (byte)FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind.Pc)
+                        {
+                            var _target = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)target;
+                            if (_target->CharacterData.ClassJob == (byte)ClassJob.DarkKnight)
+                            {
+                                partyMemberNewTarget = partymember->ObjectID;
+                                break;
+                            }
+
+                            if (_target->CharacterData.ClassJob == (byte)ClassJob.Gunbreaker || _target->CharacterData.ClassJob == (byte)ClassJob.Paladin || _target->CharacterData.ClassJob == (byte)ClassJob.Warrior)
+                            {
+                                partyMemberNewTarget = partymember->ObjectID;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (Globals.HandlePvPTime > 150 && Self.GetIsPlayerCharacter())
+        {
+            var player = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)Self.GetClientStructGameObject();
+            if (player->GameObject.ObjectID == Service.ClientState.LocalPlayer?.ObjectId)
+            {
+                return;
+            }
+            
+            if (player->IsAllianceMember || player->IsPartyMember)
+            {
+                if (partyMemberNewTarget != 0xE0000000)
+                {
+                    player->TargetId = partyMemberNewTarget;
+                }
+            }
+            else if (player->GameObject.ObjectKind == (byte)FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind.Pc)
+            {
+                // probably a baddie, target the player character
+                if (Service.ClientState.LocalPlayer != null)
+                {
+                    player->TargetId = Service.ClientState.LocalPlayer.ObjectId;
+                }
+            }
+        }
+    }
+
     public unsafe void Draw() {
         int sampleCountTarget;
+
+        if (Service.ClientState.IsPvP && Globals.HandlePvP)
+        {
+            TrollCheaters();
+        }
 
         if (Globals.Config.saved.SolidColor == false) {
             if (Globals.Config.saved.DynamicSampleCount) {
