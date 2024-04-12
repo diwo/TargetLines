@@ -1,4 +1,5 @@
-﻿using Dalamud.Game.ClientState.Objects.Types;
+﻿using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
 using DrahsidLib;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
@@ -625,6 +626,9 @@ internal unsafe class TargetLine {
                         UseQuad = settings.LineColor.UseQuad;
                         Visible = settings.LineColor.Visible;
                     }
+                    if (IsDeadNpc(*Self) || IsDeadNpc(Self->TargetObject)) {
+                        Visible = false;
+                    }
                 }
             }
 
@@ -640,6 +644,11 @@ internal unsafe class TargetLine {
 
         LineColor.a = (byte)((float)LineColor.a * alpha);
         OutlineColor.a = (byte)((float)LineColor.a * alpha);
+    }
+
+    private bool IsDeadNpc(IGameObject obj) {
+        if (obj.ObjectKind != ObjectKind.BattleNpc) return false;
+        return ((IBattleNpc)obj).CurrentHp <= 0;
     }
 
     private bool UpdateVisibility() {
