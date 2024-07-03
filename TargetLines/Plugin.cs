@@ -12,7 +12,7 @@ using System.Numerics;
 namespace TargetLines;
 
 public class Plugin : IDalamudPlugin {
-    private DalamudPluginInterface PluginInterface;
+    private IDalamudPluginInterface PluginInterface;
     private IChatGui Chat { get; init; }
     private IClientState ClientState { get; init; }
     private ICommandManager CommandManager { get; init; }
@@ -32,7 +32,7 @@ public class Plugin : IDalamudPlugin {
 
     private Dictionary<uint, TargetLine> TargetLineDict;
 
-    public Plugin(DalamudPluginInterface pluginInterface, ICommandManager commandManager, IChatGui chat, IClientState clientState) {
+    public Plugin(IDalamudPluginInterface pluginInterface, ICommandManager commandManager, IChatGui chat, IClientState clientState) {
         PluginInterface = pluginInterface;
         Chat = chat;
         ClientState = clientState;
@@ -54,9 +54,11 @@ public class Plugin : IDalamudPlugin {
         var texture_line_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLine.png");
         var texture_outline_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLineOutline.png");
         var texture_edge_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetEdge.png");
-        Globals.LineTexture = PluginInterface.UiBuilder.LoadImage(texture_line_path);
-        Globals.OutlineTexture = PluginInterface.UiBuilder.LoadImage(texture_outline_path);
-        Globals.EdgeTexture = PluginInterface.UiBuilder.LoadImage(texture_edge_path);
+
+
+        Globals.LineTexture = Service.TextureProvider.GetFromFile(texture_line_path);
+        Globals.OutlineTexture = Service.TextureProvider.GetFromFile(texture_outline_path);
+        Globals.EdgeTexture = Service.TextureProvider.GetFromFile(texture_edge_path);
 
         if (Globals.Config.saved.DebugDXLines) {
             try {
@@ -129,13 +131,13 @@ public class Plugin : IDalamudPlugin {
         }
 
         for (int index = 0; index < Service.ObjectTable.Length; index++) {
-            GameObject obj = Service.ObjectTable[index];
+            IGameObject obj = Service.ObjectTable[index];
 
             if (obj == null || !obj.IsValid()) {
                 continue;
             }
 
-            uint id = obj.ObjectId;
+            uint id = obj.EntityId;
             TargetLine? targetLine = null;
             if (TargetLineDict.TryGetValue(id, out targetLine)) {
                 if (targetLine.ShouldDelete) {
@@ -221,10 +223,6 @@ public class Plugin : IDalamudPlugin {
         PluginInterface.UiBuilder.OpenConfigUi -= Commands.ToggleConfig;
 
         Commands.Dispose();
-
-        Globals.LineTexture.Dispose();
-        Globals.OutlineTexture.Dispose();
-        Globals.EdgeTexture.Dispose();
         SwapChainHook.Dispose();
     }
 

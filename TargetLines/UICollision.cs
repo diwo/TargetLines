@@ -195,7 +195,7 @@ public static class UICollision {
     }
 
     public static unsafe bool OcclusionCheck(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4) {
-        RaptureAtkUnitManager* manager = AtkStage.GetSingleton()->RaptureAtkUnitManager;
+        RaptureAtkUnitManager* manager = AtkStage.Instance()->RaptureAtkUnitManager;
         if (manager == null) {
             return false;
         }
@@ -206,19 +206,18 @@ public static class UICollision {
             isAlliance = Marshal.ReadByte((IntPtr)group + 0x3D5E);
         }
 
-        foreach (var _entry in manager->AtkUnitManager.AllLoadedUnitsList.EntriesSpan) {
+        foreach (var _entry in manager->AtkUnitManager.AllLoadedUnitsList.Entries) {
             if (_entry.Value == null) {
                 continue;
             }
 
             var entry = _entry.Value;
-            string? name = Marshal.PtrToStringAnsi(new IntPtr(entry->Name));
-            if (name == "NamePlate") {
+            if (entry->NameString == "NamePlate") {
                 continue;
             }
                 
             if (isAlliance == 0) {
-                if (name == "_AllianceList1" || name == "_AllianceList2") {
+                if (entry->NameString == "_AllianceList1" || entry->NameString == "_AllianceList2") {
                     continue;
                 }
             }
@@ -254,8 +253,7 @@ public static class UICollision {
         if (Globals.Config.saved.DebugUICollision && CollisionDebug != null) {
             foreach (var col in CollisionDebug) {
                 if (col.unit == null || col.node == null) { continue; }
-                string? name = Marshal.PtrToStringAnsi(new IntPtr(col.unit->Name));
-                DrawOutline(col.node, $"[{col.index}] {name}->{col.node->NodeID}", 0x01102010, 0xD08080A0);
+                DrawOutline(col.node, $"[{col.index}] {col.unit->NameString}->{col.node->NodeId}", 0x01102010, 0xD08080A0);
             }
         }
         CollisionDebug?.Clear();

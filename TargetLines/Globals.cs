@@ -1,9 +1,8 @@
 ﻿using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
-using FFXIVClientStructs.FFXIV.Common.Math;
 using DrahsidLib;
-using Dalamud.Interface.Internal;
 using System;
-using ImGuiNET;
+using System.Numerics;
+using Dalamud.Interface.Textures;
 
 namespace TargetLines;
 
@@ -12,9 +11,9 @@ internal class Globals {
     public static double HandlePvPTime = 0.0;
     public static bool HandlePvP = false;
     public static Configuration Config { get; set; } = null!;
-    public static IDalamudTextureWrap LineTexture { get; set; } = null!;
-    public static IDalamudTextureWrap OutlineTexture { get; set; } = null!;
-    public static IDalamudTextureWrap EdgeTexture { get; set; } = null!;
+    public static ISharedImmediateTexture LineTexture { get; set; } = null!;
+    public static ISharedImmediateTexture OutlineTexture { get; set; } = null!;
+    public static ISharedImmediateTexture EdgeTexture { get; set; } = null!;
 
 
     private static unsafe FFXIVClientStructs.FFXIV.Client.System.Framework.Framework* _Framework { get; set; } = null!;
@@ -101,12 +100,13 @@ internal class Globals {
 
         if (occlusion) {
             var direction = position - cam;
-            var length = direction.Magnitude;
+            var length = direction.Length();
 
             if (length != 0) {
+                Vector3 dir = Vector3.Normalize(direction);
                 var flags = stackalloc int[] { 0x4000, 0x4000 }; // should probably figure out what these mean
                 var hit = stackalloc RaycastHit[1];
-                var result = Framework->BGCollisionModule->RaycastEx(hit, cam, direction.Normalized, length, 1, flags);
+                var result = Framework->BGCollisionModule->RaycastMaterialFilter(hit, &cam, &dir, length, 1, flags);
                 return result == false;
             }
 
@@ -117,3 +117,4 @@ internal class Globals {
         }
     }
 }
+

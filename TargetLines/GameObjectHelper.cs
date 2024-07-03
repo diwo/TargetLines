@@ -10,12 +10,12 @@ using static TargetLines.ClassJobHelper;
 namespace TargetLines;
 
 public static class GameObjectExtensions {
-    public static unsafe float GetScale(this GameObject obj) {
-        FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* _obj = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
+    public static unsafe float GetScale(this IGameObject obj) {
+        CSGameObject* _obj = (CSGameObject*)obj.Address;
         return _obj->Scale;
     }
 
-    public static bool IsVisible(this GameObject obj, bool occlusion) {
+    public static bool IsVisible(this IGameObject obj, bool occlusion) {
         Vector3 safePos = obj.Position;
         safePos.Y += 0.1f;
 
@@ -26,7 +26,7 @@ public static class GameObjectExtensions {
         return Globals.IsVisible(obj.GetHeadPosition(), occlusion);
     }
 
-    public static unsafe bool TargetIsTargetable(this GameObject obj) {
+    public static unsafe bool TargetIsTargetable(this IGameObject obj) {
         if (obj.TargetObject == null) {
             return false;
         }
@@ -34,43 +34,43 @@ public static class GameObjectExtensions {
         return targetobj->GetIsTargetable();
     }
 
-    public static Vector3 GetHeadPosition(this GameObject obj) {
+    public static Vector3 GetHeadPosition(this IGameObject obj) {
         Vector3 pos = obj.Position;
         pos.Y += obj.GetCursorHeight() - 0.2f;
         return pos;
     }
 
-    public static float GetCursorHeight(this GameObject obj) {
+    public static float GetCursorHeight(this IGameObject obj) {
         return Marshal.PtrToStructure<float>(obj.Address + 0x124);
     }
 
-    public static bool GetIsPlayerCharacter(this GameObject obj) {
+    public static bool GetIsPlayerCharacter(this IGameObject obj) {
         return obj.ObjectKind == ObjectKind.Player;
     }
 
-    public static bool GetIsBattleNPC(this GameObject obj) {
+    public static bool GetIsBattleNPC(this IGameObject obj) {
         return obj.ObjectKind == ObjectKind.BattleNpc;
     }
 
-    public static bool GetIsBattleChara(this GameObject obj) {
-        return obj is BattleChara;
+    public static bool GetIsBattleChara(this IGameObject obj) {
+        return obj is IBattleChara;
     }
 
-    public static PlayerCharacter GetPlayerCharacter(this GameObject obj) {
-        return obj as PlayerCharacter;
+    public static IPlayerCharacter GetPlayerCharacter(this IGameObject obj) {
+        return obj as IPlayerCharacter;
     }
 
-    public static unsafe FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject* GetClientStructGameObject(this GameObject obj)
+    public static unsafe CSGameObject* GetClientStructGameObject(this IGameObject obj)
     {
-        return (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
+        return (CSGameObject*)obj.Address;
     }
 
-    public static unsafe TargetSettings GetTargetSettings(this GameObject obj) {
+    public static unsafe TargetSettings GetTargetSettings(this IGameObject obj) {
         TargetSettings settings = new TargetSettings();
         settings.Flags = TargetFlags.Any;
 
         if (Service.ClientState.LocalPlayer != null) {
-            if (obj.ObjectId == Service.ClientState.LocalPlayer.ObjectId) {
+            if (obj.EntityId == Service.ClientState.LocalPlayer.EntityId) {
                 settings.Flags |= TargetFlags.Self;
             }
         }
@@ -78,15 +78,15 @@ public static class GameObjectExtensions {
         if (obj.GetIsPlayerCharacter()) {
             GroupManager* gm = GroupManager.Instance();
             settings.Flags |= TargetFlags.Player;
-            foreach (PartyMember member in gm->PartyMembersSpan) {
-                if (member.ObjectID == obj.ObjectId) {
+            foreach (PartyMember member in gm->MainGroup.PartyMembers) {
+                if (member.EntityId == obj.EntityId) {
                     settings.Flags |= TargetFlags.Party;
                 }
             }
 
-            if ((gm->AllianceFlags & 1) != 0 && (settings.Flags & TargetFlags.Party) != 0) {
-                foreach (PartyMember member in gm->AllianceMembersSpan) {
-                    if (member.ObjectID == obj.ObjectId) {
+            if ((gm->MainGroup.AllianceFlags & 1) != 0 && (settings.Flags & TargetFlags.Party) != 0) {
+                foreach (PartyMember member in gm->MainGroup.AllianceMembers) {
+                    if (member.EntityId == obj.EntityId) {
                         settings.Flags |= TargetFlags.Alliance;
                     }
                 }

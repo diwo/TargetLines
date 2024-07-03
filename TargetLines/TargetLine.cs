@@ -31,7 +31,7 @@ internal class TargetLine {
         Idle // being targeted
     };
 
-    public GameObject Self;
+    public IGameObject Self;
 
     public LineState State = LineState.NewTarget;
     public bool ShouldDelete = false;
@@ -83,7 +83,7 @@ internal class TargetLine {
     RGBA tempLineColor = new RGBA(0, 0, 0, 0);
     RGBA tempOutlineColor = new RGBA(0, 0, 0, 0);
 
-    public TargetLine(GameObject obj) {
+    public TargetLine(IGameObject obj) {
         Self = obj;
         if (Self.TargetObject != null) {
             LastTargetId = Self.TargetObject.TargetObjectId;
@@ -255,10 +255,12 @@ internal class TargetLine {
             }
 
             if (!segmentOccluded) {
-                drawlist.AddImageQuad(Globals.LineTexture.ImGuiHandle, p1_perp_inv, p2_perp_inv, p2_perp, p1_perp, uv1, uv2, uv3, uv4, linecolor_index->raw);
+                var wrapline = Globals.LineTexture.GetWrapOrEmpty();
+                drawlist.AddImageQuad(wrapline.ImGuiHandle, p1_perp_inv, p2_perp_inv, p2_perp, p1_perp, uv1, uv2, uv3, uv4, linecolor_index->raw);
 
                 if (outlinecolor_index->a != 0 && outlineThickness != 0) {
-                    drawlist.AddImageQuad(Globals.OutlineTexture.ImGuiHandle, p1_perp_invo, p2_perp_invo, p2_perpo, p1_perpo, uv1, uv2, uv3, uv4, outlinecolor_index->raw);
+                    var wrapoutline = Globals.OutlineTexture.GetWrapOrEmpty();
+                    drawlist.AddImageQuad(wrapoutline.ImGuiHandle, p1_perp_invo, p2_perp_invo, p2_perpo, p1_perpo, uv1, uv2, uv3, uv4, outlinecolor_index->raw);
                 }
             }
         }
@@ -291,11 +293,17 @@ internal class TargetLine {
         }
 
         if (DrawBeginCap && !firstSegmentOccluded) {
-            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, start_p1, start_p2, uv1, uv3, LineColor.raw);
+            var wrap = Globals.EdgeTexture.GetWrapOrEmpty();
+            if (wrap != null) {
+                drawlist.AddImage(wrap.ImGuiHandle, start_p1, start_p2, uv1, uv3, LineColor.raw);
+            }
         }
 
         if (DrawEndCap && !lastSegmentOccluded) {
-            drawlist.AddImage(Globals.EdgeTexture.ImGuiHandle, end_p1, end_p2, uv1, uv3, linecolor_end->raw);
+            var wrap = Globals.EdgeTexture.GetWrapOrEmpty();
+            if (wrap != null) {
+                drawlist.AddImage(wrap.ImGuiHandle, end_p1, end_p2, uv1, uv3, linecolor_end->raw);
+            }
         }
     }
 
@@ -373,11 +381,11 @@ internal class TargetLine {
     }
     
     public unsafe Vector3 GetSourcePosition(out bool fpp) {
-        return CalculatePosition(Self.Position, Self.GetCursorHeight() - 0.2f, Self.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
+        return CalculatePosition(Self.Position, Self.GetCursorHeight() - 0.2f, Self.EntityId == Service.ClientState.LocalPlayer.EntityId, out fpp);
     }
     
     public unsafe Vector3 GetTargetPosition(out bool fpp) {
-        return CalculatePosition(Self.TargetObject.Position, Self.TargetObject.GetCursorHeight() - 0.2f, Self.TargetObject.ObjectId == Service.ClientState.LocalPlayer.ObjectId, out fpp);
+        return CalculatePosition(Self.TargetObject.Position, Self.TargetObject.GetCursorHeight() - 0.2f, Self.TargetObject.EntityId == Service.ClientState.LocalPlayer.EntityId, out fpp);
     }
 
 
@@ -406,7 +414,7 @@ internal class TargetLine {
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = Self.TargetObject.ObjectId;
+            LastTargetId = Self.TargetObject.EntityId;
         }
 
         Position = start;
@@ -483,7 +491,7 @@ internal class TargetLine {
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = Self.TargetObject.ObjectId;
+            LastTargetId = Self.TargetObject.EntityId;
         }
 
         Position = _source;
@@ -529,7 +537,7 @@ internal class TargetLine {
                     LastTargetPosition = LastTargetPosition2;
                 }
 
-                LastTargetId = Self.TargetObject.ObjectId;
+                LastTargetId = Self.TargetObject.EntityId;
                 State = LineState.NewTarget;
                 StateTime = 0;
             }
@@ -544,8 +552,8 @@ internal class TargetLine {
         }
 
         if (HasTarget && HadTarget) {
-            if (Self.TargetObject.ObjectId != LastTargetId) {
-                LastTargetId = Self.TargetObject.ObjectId;
+            if (Self.TargetObject.EntityId != LastTargetId) {
+                LastTargetId = Self.TargetObject.EntityId;
                 new_target = true;
             }
 
@@ -700,27 +708,27 @@ internal class TargetLine {
         // friendlies target any existing targeted drk, otherwise any tank
         for (int index = 0; index < 24; index++)
         {
-            var partymember = group->GetAllianceMemberByIndex(index);
+            var partymember = group->MainGroup.GetAllianceMemberByIndex(index);
             if (partymember != null)
             {
-                var me = chara->LookupBattleCharaByObjectId(partymember->ObjectID);
+                var me = chara->LookupBattleCharaByEntityId(partymember->EntityId);
                 if (me != null)
                 {
-                    var target = chara->LookupBattleCharaByObjectId((uint)me->Character.TargetId);
+                    var target = chara->LookupBattleCharaByEntityId((uint)me->Character.TargetId);
                     if (target != null)
                     {
-                        if (target->Character.GameObject.ObjectKind == (byte)FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind.Pc)
+                        if (target->Character.GameObject.ObjectKind == FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind.Pc)
                         {
-                            var _target = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)target;
+                            var _target = (Character*)target;
                             if (_target->CharacterData.ClassJob == (byte)ClassJob.DarkKnight)
                             {
-                                partyMemberNewTarget = partymember->ObjectID;
+                                partyMemberNewTarget = partymember->EntityId;
                                 break;
                             }
 
                             if (_target->CharacterData.ClassJob == (byte)ClassJob.Gunbreaker || _target->CharacterData.ClassJob == (byte)ClassJob.Paladin || _target->CharacterData.ClassJob == (byte)ClassJob.Warrior)
                             {
-                                partyMemberNewTarget = partymember->ObjectID;
+                                partyMemberNewTarget = partymember->EntityId;
                             }
                         }
                     }
@@ -730,8 +738,8 @@ internal class TargetLine {
 
         if (Globals.HandlePvPTime > 150 && Self.GetIsPlayerCharacter())
         {
-            var player = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)Self.GetClientStructGameObject();
-            if (player->GameObject.ObjectID == Service.ClientState.LocalPlayer?.ObjectId)
+            var player = (Character*)Self.Address;
+            if (player->GameObject.EntityId == Service.ClientState.LocalPlayer?.EntityId)
             {
                 return;
             }
@@ -743,12 +751,12 @@ internal class TargetLine {
                     player->TargetId = partyMemberNewTarget;
                 }
             }
-            else if (player->GameObject.ObjectKind == (byte)FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind.Pc)
+            else if (player->GameObject.ObjectKind == FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind.Pc)
             {
                 // probably a baddie, target the player character
                 if (Service.ClientState.LocalPlayer != null)
                 {
-                    player->TargetId = Service.ClientState.LocalPlayer.ObjectId;
+                    player->TargetId = Service.ClientState.LocalPlayer.EntityId;
                 }
             }
         }

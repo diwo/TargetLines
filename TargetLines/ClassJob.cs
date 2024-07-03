@@ -83,6 +83,8 @@ public static class ClassJobHelper {
         /* 38 */ Dancer,
         /* 39 */ Reaper,
         /* 40 */ Sage,
+        /* 41 */ Viper,
+        /* 42 */ Pictomancer,
         Count
     };
 
@@ -107,7 +109,7 @@ public static class ClassJobHelper {
         ClassJob.Thaumaturge, ClassJob.Monk, ClassJob.Dragoon, ClassJob.Bard,
         ClassJob.BlackMage, ClassJob.Arcanist, ClassJob.Summoner, ClassJob.Rogue,
         ClassJob.Ninja, ClassJob.Machinist, ClassJob.Samurai, ClassJob.RedMage,
-        ClassJob.BlueMage, ClassJob.Dancer, ClassJob.Reaper
+        ClassJob.BlueMage, ClassJob.Dancer, ClassJob.Reaper, ClassJob.Viper, ClassJob.Pictomancer
     };
 
     public static List<ClassJob> HealerJobs = new List<ClassJob> {
@@ -129,7 +131,7 @@ public static class ClassJobHelper {
     public static List<ClassJob> MeleeDPSJobs = new List<ClassJob> {
         ClassJob.Monk, ClassJob.Dragoon, ClassJob.Ninja, ClassJob.Samurai,
         ClassJob.Reaper, ClassJob.Pugilist, ClassJob.Lancer, ClassJob.Rogue,
-        ClassJob.Adventurer
+        ClassJob.Adventurer, ClassJob.Viper
     };
 
     public static List<ClassJob> PhysicalRangedDPSJobs = new List<ClassJob> {
@@ -138,7 +140,7 @@ public static class ClassJobHelper {
 
     public static List<ClassJob> MagicalRangedDPSJobs = new List<ClassJob> {
         ClassJob.BlackMage, ClassJob.Summoner, ClassJob.RedMage, ClassJob.BlueMage,
-        ClassJob.Thaumaturge, ClassJob.Arcanist
+        ClassJob.Thaumaturge, ClassJob.Arcanist, ClassJob.Pictomancer
     };
 
     public static List<ClassJob> PureHealerJobs = new List<ClassJob> {
