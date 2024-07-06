@@ -646,7 +646,7 @@ internal unsafe class TargetLine {
         bool occlusion = Globals.Config.saved.OcclusionCulling;
 
 #if (!PROBABLY_BAD)
-        if (Self.GetIsBattleNPC()) {
+        if (Self->GetIsBattleNPC()) {
             occlusion = true;
         }
 #endif
