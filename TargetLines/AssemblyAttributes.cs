@@ -4,7 +4,7 @@
 [assembly: System.Reflection.AssemblyProduct("TargetLines")]
 [assembly: System.Reflection.AssemblyTitle("TargetLines")]
 
-[assembly: System.Reflection.AssemblyVersion("1.6.0")]
+[assembly: System.Reflection.AssemblyVersion("1.6.1")]
 
 #if DEBUG
 [assembly: System.Reflection.AssemblyConfiguration("Debug")]

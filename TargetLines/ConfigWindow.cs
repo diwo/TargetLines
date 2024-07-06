@@ -404,6 +404,14 @@ internal class ConfigWindow : WindowWrapper {
                     ImGui.SetTooltip("When enabled, the sample count will automatically adjust based on target line distance. This may be beneficial to performance.");
                 }
 
+                int selected = (int)Globals.Config.saved.LinePartyMode;
+                if (ImGui.ListBox("Party Filter Mode", ref selected, Enum.GetNames(typeof(LinePartyMode)), (int)LinePartyMode.Count))
+                {
+                    Globals.Config.saved.LinePartyMode = (LinePartyMode)selected;
+                    should_save = true;
+                    Globals.TargetLineDict.Clear();
+                }
+
                 if (!Globals.Config.saved.DynamicSampleCount) {
                     should_save |= ImGui.SliderInt("Smoothness Steps", ref Globals.Config.saved.TextureCurveSampleCount, 3, 512);
                     if (DrawPerformanceImpact(ConfigPerformanceImpact.Medium)) {

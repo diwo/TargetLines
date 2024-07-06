@@ -24,6 +24,15 @@ public enum LineDeathAnimation {
     Count
 };
 
+public enum LinePartyMode
+{
+    None = 0,
+    PartyOnly,
+    PartyOnlyInAlliance,
+    AllianceOnly,
+    Count
+}
+
 public class TargetSettings {
     public TargetFlags Flags = 0;
     public UInt64 Jobs = 0; // bitfield from ClassJob
@@ -163,6 +172,7 @@ public class SavedConfig {
     public bool CompactFlagDisplay = false;
     public bool UIOcclusion = true;
     public bool DynamicSampleCount = true;
+    public LinePartyMode LinePartyMode = LinePartyMode.None;
 
     public bool DebugDynamicSampleCount = false;
     public bool DebugUICollision = false;
@@ -181,7 +191,7 @@ public class SavedConfig {
     [Obsolete] public RGBA? EnemyEnemyLineColor;
     [Obsolete] public RGBA? OtherLineColor;
     [Obsolete] public RGBA? OutlineColor;
-    [Obsolete] public bool OnlyTargetingPC = false;
+    [Obsolete] public bool? OnlyTargetingPC;
 }
 
 public class Configuration : IPluginConfiguration {
@@ -189,7 +199,7 @@ public class Configuration : IPluginConfiguration {
 
     #region Saved configuration values
     public SavedConfig saved = new SavedConfig();
-    public List<TargetSettingsPair> LineColors;
+    public List<TargetSettingsPair> LineColors = new List<TargetSettingsPair>();
     public bool HideTooltips = false;
     #endregion
 

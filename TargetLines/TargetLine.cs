@@ -23,7 +23,7 @@ internal struct LinePoint {
     }
 }
 
-internal class TargetLine {
+internal unsafe class TargetLine {
     public enum LineState {
         NewTarget, // new target (from no target)
         Dying, // no target, fading away
@@ -31,7 +31,7 @@ internal class TargetLine {
         Idle // being targeted
     };
 
-    public IGameObject Self;
+    public IGameObject* Self;
 
     public LineState State = LineState.NewTarget;
     public bool ShouldDelete = false;
@@ -83,19 +83,24 @@ internal class TargetLine {
     RGBA tempLineColor = new RGBA(0, 0, 0, 0);
     RGBA tempOutlineColor = new RGBA(0, 0, 0, 0);
 
-    public TargetLine(IGameObject obj) {
-        Self = obj;
-        if (Self.TargetObject != null) {
-            LastTargetId = Self.TargetObject.TargetObjectId;
-            LastTargetPosition = Self.TargetObject.Position;
-            LastTargetPosition2 = LastTargetPosition;
-        }
-        else {
-            LastTargetPosition = Self.Position;
-            LastTargetPosition2 = LastTargetPosition;
-        }
+    public TargetLine(IGameObject* obj) {
+        if (obj != null)
+        {
+            Self = obj;
+            if (Self->TargetObject != null)
+            {
+                LastTargetId = Self->TargetObject.TargetObjectId;
+                LastTargetPosition = Self->TargetObject.Position;
+                LastTargetPosition2 = LastTargetPosition;
+            }
+            else
+            {
+                LastTargetPosition = Self->Position;
+                LastTargetPosition2 = LastTargetPosition;
+            }
 
-        InitializeLinePoints();
+            InitializeLinePoints();
+        }
     }
 
     private void InitializeLinePoints(int sampleCount = 0) {
@@ -310,10 +315,10 @@ internal class TargetLine {
     private void UpdateMidPosition() {
         MidPosition = (Position + TargetPosition) * 0.5f;
 
-        if (Self.GetIsPlayerCharacter()) {
+        if (Self->GetIsPlayerCharacter()) {
             MidPosition.Y += Globals.Config.saved.PlayerHeightBump;
         }
-        else if (Self.GetIsBattleChara()) {
+        else if (Self->GetIsBattleChara()) {
             MidPosition.Y += Globals.Config.saved.EnemyHeightBump;
         }
 
@@ -381,11 +386,11 @@ internal class TargetLine {
     }
     
     public unsafe Vector3 GetSourcePosition(out bool fpp) {
-        return CalculatePosition(Self.Position, Self.GetCursorHeight() - 0.2f, Self.EntityId == Service.ClientState.LocalPlayer.EntityId, out fpp);
+        return CalculatePosition(Self->Position, Self->GetCursorHeight() - 0.2f, Self->EntityId == Service.ClientState.LocalPlayer.EntityId, out fpp);
     }
     
     public unsafe Vector3 GetTargetPosition(out bool fpp) {
-        return CalculatePosition(Self.TargetObject.Position, Self.TargetObject.GetCursorHeight() - 0.2f, Self.TargetObject.EntityId == Service.ClientState.LocalPlayer.EntityId, out fpp);
+        return CalculatePosition(Self->TargetObject.Position, Self->TargetObject.GetCursorHeight() - 0.2f, Self->TargetObject.EntityId == Service.ClientState.LocalPlayer.EntityId, out fpp);
     }
 
 
@@ -397,8 +402,8 @@ internal class TargetLine {
         Vector3 start = _source;
         Vector3 end = _target;
 
-        float start_height = Self.GetCursorHeight();
-        float end_height = Self.TargetObject.GetCursorHeight();
+        float start_height = Self->GetCursorHeight();
+        float end_height = Self->TargetObject.GetCursorHeight();
         float mid_height = (start_height + end_height) * 0.5f;
 
         float start_height_scaled = (fpp0 ? 0 : start_height) * Globals.Config.saved.HeightScale;
@@ -414,7 +419,7 @@ internal class TargetLine {
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = Self.TargetObject.EntityId;
+            LastTargetId = Self->TargetObject.EntityId;
         }
 
         Position = start;
@@ -445,7 +450,7 @@ internal class TargetLine {
         Vector3 start = _source;
         Vector3 end = LastTargetPosition;
 
-        float start_height = Self.GetCursorHeight();
+        float start_height = Self->GetCursorHeight();
         float end_height = LastTargetHeight;
         float mid_height = (start_height + end_height) * 0.5f;
 
@@ -477,8 +482,8 @@ internal class TargetLine {
         Vector3 start = LastTargetPosition;
         Vector3 end = _target;
 
-        float start_height = Self.GetCursorHeight();
-        float end_height = Self.TargetObject.GetCursorHeight();
+        float start_height = Self->GetCursorHeight();
+        float end_height = Self->TargetObject.GetCursorHeight();
         float mid_height = (start_height + end_height) * 0.5f;
 
         float start_height_scaled = (fpp0 ? 0 : start_height) * Globals.Config.saved.HeightScale;
@@ -491,7 +496,7 @@ internal class TargetLine {
 
         if (alpha >= 1) {
             State = LineState.Idle;
-            LastTargetId = Self.TargetObject.EntityId;
+            LastTargetId = Self->TargetObject.EntityId;
         }
 
         Position = _source;
@@ -508,8 +513,8 @@ internal class TargetLine {
         Vector3 _source = GetSourcePosition(out fpp0);
         Vector3 _target = GetTargetPosition(out fpp1);
 
-        float start_height = Self.GetCursorHeight();
-        float end_height = Self.TargetObject.GetCursorHeight();
+        float start_height = Self->GetCursorHeight();
+        float end_height = Self->TargetObject.GetCursorHeight();
         float mid_height = (start_height + end_height) * 0.5f;
 
         float start_height_scaled = (fpp0 ? 0 : start_height) * Globals.Config.saved.HeightScale;
@@ -537,7 +542,7 @@ internal class TargetLine {
                     LastTargetPosition = LastTargetPosition2;
                 }
 
-                LastTargetId = Self.TargetObject.EntityId;
+                LastTargetId = Self->TargetObject.EntityId;
                 State = LineState.NewTarget;
                 StateTime = 0;
             }
@@ -552,8 +557,8 @@ internal class TargetLine {
         }
 
         if (HasTarget && HadTarget) {
-            if (Self.TargetObject.EntityId != LastTargetId) {
-                LastTargetId = Self.TargetObject.EntityId;
+            if (Self->TargetObject.EntityId != LastTargetId) {
+                LastTargetId = Self->TargetObject.EntityId;
                 new_target = true;
             }
 
@@ -597,7 +602,7 @@ internal class TargetLine {
             OutlineColor.raw = Globals.Config.saved.LineColor.OutlineColor.raw;
         }
 
-        if (Self.TargetObject == null) {
+        if (Self->TargetObject == null) {
             LineColor.raw = LastLineColor.raw;
             OutlineColor.raw = LastOutlineColor.raw;
         }
@@ -606,8 +611,8 @@ internal class TargetLine {
             foreach (TargetSettingsPair settings in Globals.Config.LineColors) {
                 int priority = settings.GetPairPriority();
                 if (priority > highestPriority) {
-                    TargetSettings SelfSettings = Self.GetTargetSettings();
-                    TargetSettings TargSettings = Self.TargetObject.GetTargetSettings();
+                    TargetSettings SelfSettings = Self->GetTargetSettings();
+                    TargetSettings TargSettings = Self->TargetObject.GetTargetSettings();
 
                     bool should_copy = CompareTargetSettings(ref settings.From, ref SelfSettings);
                     if (should_copy) {
@@ -646,12 +651,12 @@ internal class TargetLine {
         }
 #endif
 
-        bool vis0 = Self.IsVisible(occlusion);
+        bool vis0 = Self->IsVisible(occlusion);
         bool vis1 = false;
         bool vis2 = false;
 
         if (HasTarget) {
-            vis1 = Self.TargetObject.IsVisible(occlusion);
+            vis1 = Self->TargetObject.IsVisible(occlusion);
         }
         else {
             vis1 = Globals.IsVisible(TargetPosition, occlusion);
@@ -736,9 +741,9 @@ internal class TargetLine {
             }
         }
 
-        if (Globals.HandlePvPTime > 150 && Self.GetIsPlayerCharacter())
+        if (Globals.HandlePvPTime > 150 && Self->GetIsPlayerCharacter())
         {
-            var player = (Character*)Self.Address;
+            var player = (Character*)Self->Address;
             if (player->GameObject.EntityId == Service.ClientState.LocalPlayer?.EntityId)
             {
                 return;
@@ -765,6 +770,12 @@ internal class TargetLine {
     public unsafe void Draw() {
         int sampleCountTarget;
 
+        if (Self == null)
+        {
+            ShouldDelete = true;
+            return;
+        }
+
         if (Service.ClientState.IsPvP && Globals.HandlePvP)
         {
             TrollCheaters();
@@ -778,6 +789,9 @@ internal class TargetLine {
                 if (thickScalar < 1.0f) {
                     thickScalar = 1.0f;
                 }
+
+                // further reduce quality as lines become more numerous
+                max = (int)MathF.Min(MathF.Max(min + 3, max), max / MathF.Floor(Globals.TargetLineDict.Count / 17));
 
                 sampleCountTarget = min + ((int)MathF.Floor(1.5f + (TargetPosition - Position).Length())) * 2;
 
@@ -812,7 +826,7 @@ internal class TargetLine {
             }
         }
 
-        HasTarget = Self.TargetObject != null;
+        HasTarget = Self->TargetObject != null;
 
         UpdateState();
         UpdateColors();

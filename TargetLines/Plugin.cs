@@ -8,6 +8,7 @@ using System.IO;
 using Dalamud.Plugin.Services;
 using DrahsidLib;
 using System.Numerics;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 
 namespace TargetLines;
 
@@ -30,8 +31,6 @@ public class Plugin : IDalamudPlugin {
         | ImGuiWindowFlags.NoSavedSettings
         | ImGuiWindowFlags.NoNav;
 
-    private Dictionary<uint, TargetLine> TargetLineDict;
-
     public Plugin(IDalamudPluginInterface pluginInterface, ICommandManager commandManager, IChatGui chat, IClientState clientState) {
         PluginInterface = pluginInterface;
         Chat = chat;
@@ -49,7 +48,7 @@ public class Plugin : IDalamudPlugin {
             Globals.HandlePvP = true;
         }
 
-        TargetLineDict = new Dictionary<uint, TargetLine>();
+        Globals.TargetLineDict = new Dictionary<uint, TargetLine>();
 
         var texture_line_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLine.png");
         var texture_outline_path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "Data/TargetLineOutline.png");
@@ -101,6 +100,11 @@ public class Plugin : IDalamudPlugin {
     private unsafe void DrawOverlay() {
         Globals.Runtime += Globals.Framework->FrameDeltaTime;
 
+        if (Globals.TargetLineDict == null) {
+            Service.Logger.Verbose("TargetLineDict null?!");
+            return;
+        }
+
         if (Globals.HandlePvP)
         {
             if (WasInPvP != Service.ClientState.IsPvP)
@@ -122,11 +126,11 @@ public class Plugin : IDalamudPlugin {
             ImGui.GetWindowDrawList().AddCircleFilled(dest, 7, 0xFF0000FF);
         }
 
-        if (Service.ClientState.LocalPlayer == null && TargetLineDict.Count > 0 || Service.ClientState.IsPvP) {
-            TargetLineDict.Clear();
+        if ((Service.ClientState.LocalPlayer == null || Service.ClientState.IsPvP) && Globals.TargetLineDict.Count > 0 ) {
+            Globals.TargetLineDict.Clear();
         }
 
-        if (Service.ClientState.IsPvP) {
+        if (Service.ClientState.LocalPlayer == null || Service.ClientState.IsPvP) {
             return;
         }
 
@@ -139,9 +143,9 @@ public class Plugin : IDalamudPlugin {
 
             uint id = obj.EntityId;
             TargetLine? targetLine = null;
-            if (TargetLineDict.TryGetValue(id, out targetLine)) {
+            if (Globals.TargetLineDict.TryGetValue(id, out targetLine)) {
                 if (targetLine.ShouldDelete) {
-                    TargetLineDict.Remove(id);
+                    Globals.TargetLineDict.Remove(id);
                     continue;
                 }
             }
@@ -162,8 +166,44 @@ public class Plugin : IDalamudPlugin {
 #endif
 
             if (targetLine == null && has_target) {
-                targetLine = new TargetLine(obj);
-                TargetLineDict.Add(id, targetLine);
+                var group = GroupManager.Instance();
+
+                switch (Globals.Config.saved.LinePartyMode)
+                {
+                    default:
+                    case LinePartyMode.None:
+                        targetLine = new TargetLine((IGameObject*)&obj);
+                        Globals.TargetLineDict.Add(id, targetLine);
+                        break;
+                    case LinePartyMode.PartyOnly:
+                        if (group->MainGroup.IsEntityIdInParty(obj.EntityId) || group->MainGroup.IsEntityIdInParty((uint)obj.TargetObjectId))
+                        {
+                            targetLine = new TargetLine((IGameObject*)&obj);
+                            Globals.TargetLineDict.Add(id, targetLine);
+                        }
+                        break;
+                    case LinePartyMode.PartyOnlyInAlliance:
+                        if (group->MainGroup.IsAlliance)
+                        {
+                            if (group->MainGroup.IsEntityIdInParty(obj.EntityId) || group->MainGroup.IsEntityIdInParty((uint)obj.TargetObjectId))
+                            {
+                                targetLine = new TargetLine((IGameObject*)&obj);
+                                Globals.TargetLineDict.Add(id, targetLine);
+                            }
+                        }
+                        else
+                        {
+                            targetLine = new TargetLine((IGameObject*)&obj);
+                            Globals.TargetLineDict.Add(id, targetLine);
+                        }
+                        break;
+                    case LinePartyMode.AllianceOnly:
+                        if (group->MainGroup.IsEntityIdInAlliance(obj.EntityId) || group->MainGroup.IsEntityIdInAlliance((uint)obj.TargetObjectId)) {
+                            targetLine = new TargetLine((IGameObject*)&obj);
+                            Globals.TargetLineDict.Add(id, targetLine);
+                        }
+                        break;
+                }
             }
 
             if (targetLine != null) {
@@ -188,6 +228,11 @@ public class Plugin : IDalamudPlugin {
             }
         }
 
+        if (Service.ClientState.LocalPlayer == null)
+        {
+            return;
+        }
+
         bool combat_flag = Service.Condition[ConditionFlag.InCombat];
         bool runOverlay = !Globals.Config.saved.OnlyUnsheathed || (Globals.Config.saved.OnlyUnsheathed && (Service.ClientState.LocalPlayer.StatusFlags & Dalamud.Game.ClientState.Objects.Enums.StatusFlags.WeaponOut) != 0);
 
@@ -205,8 +250,8 @@ public class Plugin : IDalamudPlugin {
                 ImGuiUtils.WrapBegin("##TargetLinesOverlay", OVERLAY_WINDOW_FLAGS, DrawOverlay);
             }
         }
-        else if (TargetLineDict.Count > 0) {
-            TargetLineDict.Clear();
+        else if (Globals.TargetLineDict.Count > 0) {
+            Globals.TargetLineDict.Clear();
         }
     }
 

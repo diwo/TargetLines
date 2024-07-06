@@ -3,6 +3,7 @@ using DrahsidLib;
 using System;
 using System.Numerics;
 using Dalamud.Interface.Textures;
+using System.Collections.Generic;
 
 namespace TargetLines;
 
@@ -15,6 +16,7 @@ internal class Globals {
     public static ISharedImmediateTexture OutlineTexture { get; set; } = null!;
     public static ISharedImmediateTexture EdgeTexture { get; set; } = null!;
 
+    public static Dictionary<uint, TargetLine> TargetLineDict { get; set; } = null!;
 
     private static unsafe FFXIVClientStructs.FFXIV.Client.System.Framework.Framework* _Framework { get; set; } = null!;
     public static unsafe FFXIVClientStructs.FFXIV.Client.System.Framework.Framework* Framework {
