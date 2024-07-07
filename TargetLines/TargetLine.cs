@@ -99,7 +99,7 @@ internal unsafe class TargetLine {
                 LastTargetPosition2 = LastTargetPosition;
             }
 
-            InitializeLinePoints();
+            InitializeLinePoints(1);
         }
     }
 
@@ -768,7 +768,7 @@ internal unsafe class TargetLine {
     }
 
     public unsafe void Draw() {
-        int sampleCountTarget;
+        int sampleCountTarget = 1;
 
         if (Self == null)
         {
@@ -815,6 +815,10 @@ internal unsafe class TargetLine {
             
 
             if (Points.Length != sampleCountTarget) {
+                if (sampleCountTarget < Globals.Config.saved.TextureCurveSampleCountMin)
+                {
+                    sampleCountTarget = Globals.Config.saved.TextureCurveSampleCountMin;
+                }
                 InitializeLinePoints(sampleCountTarget);
             }
 

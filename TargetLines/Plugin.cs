@@ -21,6 +21,7 @@ public class Plugin : IDalamudPlugin {
     public string Name => "TargetLines";
 
     private bool WasInPvP = false;
+    private LineActor? testLine = null;
 
     private const ImGuiWindowFlags OVERLAY_WINDOW_FLAGS =
           ImGuiWindowFlags.NoBackground
@@ -60,6 +61,8 @@ public class Plugin : IDalamudPlugin {
         Globals.EdgeTexture = Service.TextureProvider.GetFromFile(texture_edge_path);
 
         if (Globals.Config.saved.DebugDXLines) {
+            Vector3Extensions.Tests();
+
             try {
                 SwapChainResolver.Setup();
             }
@@ -119,9 +122,20 @@ public class Plugin : IDalamudPlugin {
             }
         }
 
-        if (Globals.Config.saved.DebugDXLines && ShaderSingleton.Initialized) {
-            Service.GameGui.WorldToScreen(new Vector3(-1.0f, 0.1f, 5.0f), out Vector2 source);
-            Service.GameGui.WorldToScreen(new Vector3(1.0f, 0.1f, 5.0f), out Vector2 dest);
+        if (Globals.Config.saved.DebugDXLines && ShaderSingleton.Initialized && testLine != null && Service.ClientState.LocalPlayer != null) {
+            testLine.Source = Service.ClientState.LocalPlayer.GetHeadPosition().DXVector3();
+
+            if (Service.ClientState.LocalPlayer.TargetObject != null)
+            {
+                testLine.Destination = Service.ClientState.LocalPlayer.TargetObject.GetHeadPosition().DXVector3();
+            }
+            else
+            {
+                testLine.Destination = new SharpDX.Vector3(1.0f, 0.1f, 5.0f);
+            }
+
+            Service.GameGui.WorldToScreen(testLine.Source.Vector3(), out Vector2 source);
+            Service.GameGui.WorldToScreen(testLine.Destination.Vector3(), out Vector2 dest);
             ImGui.GetWindowDrawList().AddCircleFilled(source, 9, 0xFF00FF00);
             ImGui.GetWindowDrawList().AddCircleFilled(dest, 7, 0xFF0000FF);
         }
@@ -214,17 +228,12 @@ public class Plugin : IDalamudPlugin {
         UICollision.DrawDebugOutlines();
     }
 
-    private LineActor? testLine = null;
-
     private void OnDraw() {
         Windows.System.Draw();
 
         if (Globals.Config.saved.DebugDXLines) {
             if (ShaderSingleton.Initialized && testLine == null) {
                 testLine = new LineActor(SwapChainHook.Scene.Device, SwapChainHook.Scene.SwapChain);
-                testLine.Source = new SharpDX.Vector3(-1.0f, 0.1f, 5.0f);
-                testLine.Destination = new SharpDX.Vector3(1.0f, 0.1f, 5.0f);
-                Service.Logger.Warning("TEST TEST");
             }
         }
 
