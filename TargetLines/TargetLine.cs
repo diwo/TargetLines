@@ -629,6 +629,9 @@ internal unsafe class TargetLine {
                     if (IsDeadNpc(*Self) || IsDeadNpc(Self->TargetObject)) {
                         Visible = false;
                     }
+                    if (Self->EntityId == Service.ClientState.LocalPlayer?.EntityId) {
+                        Visible = false;
+                    }
                 }
             }
 
